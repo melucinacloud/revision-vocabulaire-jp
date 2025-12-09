@@ -1,0 +1,8 @@
+# Nom du Worker
+name = "revision-vocabulaire-worker"
+
+# Date de compatibilité Cloudflare Workers
+compatibility_date = "2025-12-09"
+
+# Fichier principal du Worker
+main = "./functions/api-test.js"
