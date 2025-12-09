@@ -377,10 +377,35 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
+// Générer ou récupérer un ID utilisateur unique
+let userId = localStorage.getItem("userId");
+if (!userId) {
+  userId = crypto.randomUUID(); // ID unique
+  localStorage.setItem("userId", userId);
+}
+
+// Chargement automatique au démarrage, sans popup
+async function loadVocabFromCloud(auto = true) {
+  try {
+    const res = await fetch(`https://revision-api.nom_du_compte.workers.dev/load?user=${userId}`);
+    if (res.ok) {
+      const data = await res.json();
+      Object.assign(vocabulary, data);
+      loadThemes(); // recharge le site avec les données
+      if (!auto) alert("Vocabulaire chargé !");
+    } else if (!auto) {
+      alert("Erreur lors du chargement");
+    }
+  } catch (err) {
+    console.error(err);
+    if (!auto) alert("Impossible de contacter le serveur");
+  }
+}
+
 // Sauvegarde sur le Cloud
 async function saveVocabToCloud() {
   try {
-    const res = await fetch("https://revision-api.nihongotips.workers.dev/save", {
+    const res = await fetch(`https://revision-api.nom_du_compte.workers.dev/save?user=${userId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(vocabulary)
@@ -393,28 +418,8 @@ async function saveVocabToCloud() {
   }
 }
 
-// Chargement depuis le Cloud
-async function loadVocabFromCloud() {
-  try {
-    const res = await fetch("https://revision-api.nihongotips.workers.dev/load");
-    if (res.ok) {
-      const data = await res.json();
-      Object.assign(vocabulary, data);
-      loadThemes(); // recharge le site avec les données
-      alert("Vocabulaire chargé !");
-    } else {
-      alert("Erreur lors du chargement");
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Impossible de contacter le serveur");
-  }
-}
-
-// Charger automatiquement au démarrage
-window.addEventListener("DOMContentLoaded", () => {
-  loadVocabFromCloud();
-});
+// Charger automatiquement au chargement de la page (pas de popup)
+window.addEventListener("load", () => loadVocabFromCloud(true));
 
 
 /* ---------- String normalization & category fusion ---------- */
