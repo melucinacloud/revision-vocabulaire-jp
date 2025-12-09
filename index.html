@@ -387,7 +387,7 @@ if (!userId) {
 // Chargement automatique au démarrage, sans popup
 async function loadVocabFromCloud(auto = true) {
   try {
-    const res = await fetch(`https://revision-api.nom_du_compte.workers.dev/load?user=${userId}`);
+    const res = await fetch(`https://revision-api.nihongotips.workers.dev/load?user=${userId}`);
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
@@ -405,7 +405,7 @@ async function loadVocabFromCloud(auto = true) {
 // Sauvegarde sur le Cloud
 async function saveVocabToCloud() {
   try {
-    const res = await fetch(`https://revision-api.nom_du_compte.workers.dev/save?user=${userId}`, {
+    const res = await fetch(`https://revision-api.nihongotips.workers.dev/save?user=${userId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(vocabulary)
