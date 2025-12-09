@@ -220,6 +220,14 @@ footer {
 <div class="container">
 
   <div class="menu left-menu">
+    <!-- Formulaire login -->
+<div id="loginForm">
+  <input id="username" placeholder="Identifiant">
+  <input id="password" type="password" placeholder="Mot de passe">
+  <button onclick="register()">Créer un compte</button>
+  <button onclick="login()">Se connecter</button>
+</div>
+
     <h2>Menu</h2>
 
     <div class="section">
@@ -283,8 +291,7 @@ footer {
         <button onclick="exportTXT()">Exporter</button>
         <button onclick="downloadTemplateTXT()">Modèle TXT</button>
 <button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
-<button onclick="loadVocabFromCloud(false)">Charger depuis le Cloud</button>
-
+<button onclick="loadVocabFromCloud()">Charger depuis le Cloud</button>
       </div>
       <p style="
   margin-top:10px; 
@@ -377,51 +384,74 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
-const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
+const WORKER_URL = "https://revision-api.nom_du_compte.workers.dev";
+let token = localStorage.getItem("token");
 
-// Générer ou récupérer un ID utilisateur
-let userId = localStorage.getItem("userId");
-if (!userId) {
-  userId = crypto.randomUUID(); // ID unique
-  localStorage.setItem("userId", userId);
+// REGISTER
+async function register() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const res = await fetch(`${WORKER_URL}/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+  alert(await res.text());
 }
 
-// Sauvegarde sur le Cloud
-async function saveVocabToCloud() {
-  try {
-    const res = await fetch(`${WORKER_URL}/save?user=${userId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vocabulary)
-    });
-    if (res.ok) alert("Vocabulaire sauvegardé !");
-    else alert("Erreur de sauvegarde");
-  } catch (err) {
-    console.error(err);
-    alert("Impossible de contacter le serveur");
+// LOGIN
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const res = await fetch(`${WORKER_URL}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+  if (res.ok) {
+    const data = await res.json();
+    token = data.token;
+    localStorage.setItem("token", token);
+    alert("Connecté !");
+    loadVocabFromCloud(true);
+  } else {
+    alert(await res.text());
   }
 }
 
-// Chargement depuis le Cloud
-async function loadVocabFromCloud(auto = true) {
+// Sauvegarde vocab
+async function saveVocabToCloud() {
+  if (!token) { alert("Connectez-vous d'abord"); return; }
+  const res = await fetch(`${WORKER_URL}/save`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(vocabulary)
+  });
+  alert(await res.text());
+}
+
+// Chargement vocab automatique
+async function loadVocabFromCloud(auto=false) {
+  if (!token) return;
   try {
-    const res = await fetch(`${WORKER_URL}/load?user=${userId}`);
+    const res = await fetch(`${WORKER_URL}/load`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
-      loadThemes(); // recharge le site avec les données
+      loadThemes(); // recharge le site
       if (!auto) alert("Vocabulaire chargé !");
-    } else if (!auto) {
-      alert("Erreur lors du chargement");
     }
-  } catch (err) {
-    console.error(err);
-    if (!auto) alert("Impossible de contacter le serveur");
-  }
+  } catch(err) { console.error(err); }
 }
 
-// Charger automatiquement au démarrage sans popup
-window.addEventListener("load", () => loadVocabFromCloud(true));
+// Auto load si déjà connecté
+if (token) loadVocabFromCloud(true);
+
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
   if(!s) return '';
