@@ -377,9 +377,11 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
+const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
+
 async function saveVocabToCloud() {
   try {
-    const res = await fetch('https://revision-api.nihongotips.workers.dev/save', {
+    const res = await fetch(`${WORKER_URL}/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(vocabulary)
@@ -394,11 +396,11 @@ async function saveVocabToCloud() {
 
 async function loadVocabFromCloud() {
   try {
-    const res = await fetch('https://revision-api.nihongotips.workers.dev/load');
+    const res = await fetch(`${WORKER_URL}/load`);
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
-      loadThemes(); // recharge ton site avec les données
+      loadThemes(); // recharge le site avec les données
       alert('Vocabulaire chargé !');
     } else {
       alert('Erreur lors du chargement');
@@ -408,6 +410,7 @@ async function loadVocabFromCloud() {
     alert('Impossible de contacter le serveur');
   }
 }
+
 
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
