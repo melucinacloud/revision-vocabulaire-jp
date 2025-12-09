@@ -379,7 +379,7 @@ let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 async function saveVocabToCloud() {
   try {
-    const res = await fetch('https://nom-de-worker.nom-de-compte.workers.dev/save', {
+    const res = await fetch('https://revision-api.nihongotips.workers.dev/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(vocabulary)
@@ -394,7 +394,7 @@ async function saveVocabToCloud() {
 
 async function loadVocabFromCloud() {
   try {
-    const res = await fetch('https://nom-de-worker.nom-de-compte.workers.dev/load');
+    const res = await fetch('https://revision-api.nihongotips.workers.dev/load');
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
