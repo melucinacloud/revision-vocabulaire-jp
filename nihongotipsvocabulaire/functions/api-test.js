@@ -1,6 +1,5 @@
-export async function onRequestGet(context) {
-  // Exemple simple : renvoie un texte
-  return new Response("Fonction test OK !", {
-    headers: { "Content-Type": "text/plain" }
+export async function onRequest(context) {
+  return new Response("Hello from Worker!", {
+    headers: { "content-type": "text/plain" }
   });
 }
