@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Révision vocabulaire japonais</title>
+<style>
+:root{
+  --bg: linear-gradient(180deg,#fff7fb,#fff0f6);
+  --card-bg: rgba(255,255,255,0.95);
+  --menu-bg: linear-gradient(180deg,#ffeef8,#fff6fb);
+  --text: #2b2b2b;
+  --accent: #ff7ac2;
+  --indigo: #26418f;
+}
+.dark{
+  --bg: linear-gradient(180deg,#14121a,#16121f);
+  --card-bg: rgba(28,24,36,0.95);
+  --menu-bg: linear-gradient(180deg,#2c213f,#241b33);
+  --text:#ffffff;
+  --accent:#d179aa;
+}
+
+*{box-sizing:border-box}
+body {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  background-attachment: fixed;
+  padding: 20px;
+  
+  /* centrage seulement si écran >= 900px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* container layout */
+.container{
+  width:100%;
+  max-width:1100px;
+  display:grid;
+  grid-template-columns: minmax(200px,260px) 1fr minmax(200px,260px); /* gauche, centre, droite */
+  gap:18px;
+  align-items:start;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+}
+
+/* menu */
+.menu{
+  background:var(--menu-bg);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.08);
+}
+.menu h2{margin:4px 0 12px 0;font-size:20px}
+.menu .section{margin-bottom:12px}
+.menu .row{display:flex;gap:8px;flex-wrap:wrap}
+.menu button, .menu select{
+  background:rgb(243, 204, 230);
+  border:1px solid rgba(0,0,0,0.06);
+  padding:8px 10px;
+  border-radius:10px;
+  font-size:14px;
+  cursor:pointer;
+}
+.menu button.small{padding:6px 8px;font-size:13px}
+.menu .mlabel{font-weight:600;margin-bottom:6px}
+.small-note{font-size:12px;color:rgba(0,0,0,0.6);margin-top:6px}
+
+/* card */
+.card {
+  background: var(--card-bg);
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  position: relative;
+  min-height: 360px;
+  max-height: 80vh;    /* hauteur max 80% de l'écran */
+  overflow-y: auto;    /* permet de scroller si contenu dépasse */
+}
+
+#question{font-size:48px;font-weight:700;text-align:center;margin-top:12px}
+#answer{font-size:26px;color:var(--accent);text-align:center;margin-top:10px;display:none}
+.actions{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  margin-top:18px;
+  flex-wrap:wrap;
+}
+.actions button{
+  background:linear-gradient(180deg,#ffdff0,#ffbfe6);
+  border:none;
+  padding:10px 14px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:14px;
+}
+.actions button.small{font-size:12px;padding:6px 10px;}
+
+/* fleur japonaise animée */
+.fleur{
+  pointer-events: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  background: url('https://i.postimg.cc/3wy4hNFD/42321aaa-d7a4-455f-8a32-d02eace61f30-Converti.png') no-repeat center/contain;
+  animation: rotateFlower 6s linear infinite;
+  z-index: 10;
+}
+
+/* modal */
+.modal{
+  display:none;
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:var(--card-bg);
+  padding:18px;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  z-index:200;
+  max-width:92%;
+  width:520px;
+  max-height:86%;
+  overflow:auto;
+}
+
+#japaneseVoiceModal ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+#japaneseVoiceModal li {
+  margin-bottom: 6px;
+}
+
+
+.modal h3{margin-top:0}
+.modal .row{margin-top:8px}
+
+/* category manager list */
+.cat-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px;
+  border-radius:8px;
+  margin-bottom:6px;
+  background:rgba(0,0,0,0.03);
+}
+.cat-item button{
+  background:#ff6b6b;
+  border:none;
+  color:white;
+  padding:6px 8px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+footer {
+  text-align: center;
+  padding: 20px 10px;
+  margin-top: 40px;
+  color: #b23b6d;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+#localstorage-footer {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #b23b6d;
+}
+
+#localstorage-footer a {
+  color: #b23b6d;
+  text-decoration: underline;
+}
+
+/* Responsive mobile */
+@media(max-width:900px){
+   body {
+    display: block; /* plus de centrage vertical */
+    padding-top: env(safe-area-inset-top, 20px); /* safe area sur mobile */
+    padding-bottom: 20px;
+  }
+  .container{
+    display: flex;
+    flex-direction: column; /* empilement vertical */
+    gap: 20px;
+  }
+  .left-menu{ order: 1; width: 100%; }
+  .card{ order: 2; width: 100%; min-height: auto; height: auto; overflow: visible; }
+  .right-menu{ order: 3; width: 100%; }
+}
+
+
+
+
+</style>
+</head>
+<body>
+  <button id="initAudio" style="position:absolute;top:-100px;left:-100px;">Activer l’audio</button>
+
+<div class="container">
+
+  <div class="menu left-menu">
+    <h2>Menu</h2>
+
+    <div class="section">
+      <div class="mlabel">Catégories</div>
+      <select id="theme" onchange="onThemeChange()">
+        <option value="all">Tous</option>
+      </select>
+      <div style="margin-top:8px">
+        <button onclick="openCategoryManager()" style="width:100%">Gérer catégories</button>
+      </div>
+    </div>
+    <p style="font-size:13px; margin-top:6px;">
+        Pour installer tous les catégories, téléchargez le dernier fichier du vocabulaire 
+        <a href="https://drive.google.com/drive/folders/1q1ORDylWfZvPW_TAvHTxId33sFPWuSwV?usp=sharing" target="_blank">ici</a> et importez-le.
+      </p>
+
+
+    <div class="section">
+      <div class="mlabel">Mode</div>
+      <div class="row">
+        <label><input type="radio" name="mode" value="jf" checked> J → F</label>
+        <label><input type="radio" name="mode" value="fj"> F → J</label>
+        <label><input type="radio" name="mode" value="mix"> Mixte</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="mlabel">Révision</div>
+      <div class="row">
+        <button onclick="startNewRandomList()">Nouvelle liste aléatoire</button>
+        <button onclick="startDictation()">Dictée</button>
+        <button onclick="startHardRevision()">Révision mots difficiles</button>
+        <button onclick="openHardWords()">Voir mots difficiles</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="fleur"></div>
+    <div id="question">...</div>
+    <div id="answer">...</div>
+    <div class="actions" id="card-actions">
+      <button onclick="playAudio()">🔊 Ecouter en japonais</button>
+      <button onclick="showAnswer()">Réponse</button>
+      <button onclick="nextFromQueue()">Suivant</button>
+      <button onclick="toggleHardBtn()" class="small" id="hardBtn">⭐ Difficile</button>
+    </div>
+      <footer>
+    <p>© 2025 nihongotips</p>
+    <p id="localstorage-footer">
+      💬 Bugs / idées : <a href="mailto:sylvaine.schemmel@gmail.com">contactez-moi</a>
+    </p>
+  </footer>
+  </div>
+
+  <div class="menu right-menu">
+    <div class="section">
+      <div class="mlabel">Vocabulaire</div>
+      <div class="row">
+        <button onclick="triggerImport()">Importer</button>
+        <button onclick="exportTXT()">Exporter</button>
+        <button onclick="downloadTemplateTXT()">Modèle TXT</button>
+      </div>
+      <p style="
+  margin-top:10px; 
+  padding:10px; 
+  background:#ffe6f0; 
+  border-left:4px solid #d14b7a; 
+  border-radius:6px;
+  font-size:0.9rem;
+  color:#b03a63;
+">
+  ⚠️ <b>Important :</b> Si vous supprimez les données de votre navigateur (cache, cookies, stockage), 
+  votre vocabulaire sera perdu. Pensez à l’exporter régulièrement !
+</p>
+
+<div id="addWordFormContainer" style="position:relative;"></div>
+
+    <div class="section" style="margin-top:8px">
+      <div class="mlabel">Apparence</div>
+      <div class="row">
+        <button onclick="toggleTheme()" class="small">Clair / Sombre</button>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- FIN container -->
+
+<!-- modals en dehors -->
+<div id="hardPage" class="modal" aria-hidden="true"></div>
+<div id="dictationPage" class="modal" aria-hidden="true"></div>
+<div id="categoryManager" class="modal" aria-hidden="true"></div>
+
+<div id="japaneseVoiceModal" class="modal" aria-hidden="true">
+  <h3>Voix japonaise non détectée</h3>
+  <p>🔊 Il semble que votre appareil ou votre navigateur n’ait pas de voix japonaise installée.</p>
+  
+  <p>Pour activer le son japonais :</p>
+  <ul>
+    <li>🟦 <b>Windows</b> : Paramètres → Heure et langue → Voix → Ajouter une voix → Japonais</li>
+    <li>🍎 <b>macOS</b> : Préférences Système → Accessibilité → Contenu parlé → Ajouter une voix japonaise</li>
+    <li>🤖 <b>Android</b> : Paramètres → Synthèse vocale → Moteur Google TTS → Installer Japonais</li>
+    <li>📱 <b>iOS</b> : Réglages → Accessibilité → Contenu parlé → Voix → Ajouter Japonais</li>
+  </ul>
+
+  <p id="browserNote" style="margin-top:8px;font-size:14px;color:#555;"></p>
+
+  <div style="text-align:right; margin-top:12px;">
+    <button onclick="closeJapaneseVoiceModal()" style="padding:6px 12px; border-radius:8px; background:var(--accent); color:white; border:none; cursor:pointer;">Fermer</button>
+  </div>
+</div>
+
+
+
+<!-- hidden file input -->
+<input id="fileInput" type="file" accept=".txt" style="display:none" />
+
+
+<script>
+/* ---------- Storage ---------- */
+const STORAGE_VOC = 'vocabulary_v1';
+const STORAGE_HARD = 'hardWords_v1';
+window.addEventListener('load', () => {
+  const btn = document.getElementById('initAudio');
+  btn.addEventListener('click', () => {
+    const u = new SpeechSynthesisUtterance('');
+    u.lang = 'ja-JP';
+    speechSynthesis.speak(u);
+    btn.style.display = 'none';
+  });
+});
+
+function adjustCardHeight() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+window.addEventListener('resize', adjustCardHeight);
+window.addEventListener('load', adjustCardHeight);
+adjustCardHeight();
+
+/* ---------- Data (load or default) ---------- */
+let vocabulary = JSON.parse(localStorage.getItem(STORAGE_VOC) || 'null');
+if(!vocabulary){
+  vocabulary = {
+    animaux: [{jp:'うし',fr:'vache',lvl:1},{jp:'いぬ',fr:'chien',lvl:1},{jp:'ねこ',fr:'chat',lvl:1}],
+    objets: [{jp:'かさ',fr:'parapluie',lvl:1},{jp:'いす',fr:'chaise',lvl:1}],
+    nourriture: [{jp:'すし',fr:'sushi',lvl:1},{jp:'にく',fr:'viande',lvl:1}]
+  };
+  localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary));
+}
+let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
+
+/* ---------- String normalization & category fusion ---------- */
+function normalizeString(s){
+  if(!s) return '';
+  return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+// Levenshtein distance
+function levenshtein(a, b) {
+  if(a === b) return 0;
+  if(a.length === 0) return b.length;
+  if(b.length === 0) return a.length;
+  const v0 = new Array(b.length + 1);
+  const v1 = new Array(b.length + 1);
+  for (let i = 0; i <= b.length; i++) v0[i] = i;
+  for (let i = 0; i < a.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < b.length; j++) {
+      const cost = a[i] === b[j] ? 0 : 1;
+      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+    }
+    for (let j = 0; j <= b.length; j++) v0[j] = v1[j];
+  }
+  return v1[b.length];
+}
+
+function findClosestExistingCategory(catNormalized){
+  let best = null;
+  let bestDist = Infinity;
+  for (const existing of Object.keys(vocabulary)){
+    const exNorm = normalizeString(existing);
+    if(exNorm === catNormalized) return existing;
+    const d = levenshtein(catNormalized, exNorm);
+    if(d < bestDist){ bestDist = d; best = existing; }
+  }
+  if(bestDist <= 2) return best;
+  return null;
+}
+
+function normalizeCategory(cat){
+  if(!cat) return 'autres';
+  let c = normalizeString(cat);
+  const corrections = {'nouriture':'nourriture','objet':'objets','lieu':'lieux','endroit':'endroits','animal':'animaux'};
+  if(c in corrections) c = corrections[c];
+  if(Object.keys(vocabulary).length > 0){
+    const closest = findClosestExistingCategory(c);
+    if(closest) return closest;
+  }
+  return c || 'autres';
+}
+
+// Normalize a word + category triplet (for add/import)
+function normalizeWordAndCategory(jp, fr, cat){
+  jp = (jp||'').trim();
+  fr = (fr||'').trim();
+  cat = (cat||'autres').trim();
+  // normalize category using the smarter function
+  const catNorm = normalizeCategory(cat);
+  return {jp, fr, cat: catNorm};
+}
+
+// Merge similar categories already stored (call once at init)
+function mergeSimilarCategories(){
+  const keys = Object.keys(vocabulary);
+  // map normalized -> canonical name
+  const mapping = {};
+  for(const k of keys){
+    const kn = normalizeString(k);
+    if(mapping[kn]){
+      const target = mapping[kn];
+      vocabulary[target] = (vocabulary[target] || []).concat(vocabulary[k]);
+      delete vocabulary[k];
+    } else {
+      const closest = findClosestExistingCategory(kn);
+      if(closest && normalizeString(closest) !== kn){
+        vocabulary[closest] = (vocabulary[closest] || []).concat(vocabulary[k]);
+        delete vocabulary[k];
+        mapping[kn] = closest;
+      } else {
+        mapping[kn] = k;
+      }
+    }
+  }
+  // deduplicate words inside categories
+  for(const cat in vocabulary){
+    const seen = new Set();
+    const unique = [];
+    for(const w of vocabulary[cat]){
+      const key = (w.jp||'') + '|' + (w.fr||'');
+      if(!seen.has(key)){ seen.add(key); unique.push(w); }
+    }
+    vocabulary[cat] = unique;
+  }
+  saveVocabToStorage();
+}
+
+/* run merge at startup to clean old data */
+mergeSimilarCategories();
+
+/* ---------- Queue ---------- */
+let currentQueue = [];
+let queueIndex = 0;
+let current = {};
+
+/* ---------- Helpers ---------- */
+function saveVocabToStorage(){ localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary)); }
+function saveHardToStorage(){ localStorage.setItem(STORAGE_HARD, JSON.stringify(difficult)); }
+
+/* ---------- Themes ---------- */
+function loadThemes(){
+  const sel = document.getElementById('theme');
+  const prev = sel.value || 'all';
+  sel.innerHTML = '<option value="all">Tous</option>';
+  const cats = Object.keys(vocabulary).sort();
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  if(Array.from(sel.options).find(o=>o.value === prev)) sel.value = prev;
+}
+loadThemes();
+
+function onThemeChange(){ startNewRandomList(); }
+
+/* ---------- Modes ---------- */
+function getMode(){ return document.querySelector('input[name="mode"]:checked').value; }
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => { updateDisplayedFromQueue(); });
+});
+
+/* ---------- Queue helpers ---------- */
+function shuffle(array){ for(let i = array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];} return array; }
+
+function buildActiveListExcludeDifficult(){
+  const t = document.getElementById('theme').value || 'all';
+  const hardKeys = new Set(difficult.map(w=>w.jp + '|' + w.fr));
+  let list = (t==='all') ? Object.values(vocabulary).flat() : (vocabulary[t] || []);
+  return list.filter(w => !hardKeys.has(w.jp+'|'+w.fr));
+}
+
+function startNewRandomList(){
+  const list = buildActiveListExcludeDifficult();
+  currentQueue = shuffle(list.slice());
+  queueIndex=0;
+  if(currentQueue.length===0){ document.getElementById('question').textContent='Aucun mot'; document.getElementById('answer').style.display='none'; current={}; return;}
+  showQueueItem(queueIndex);
+}
+
+function showQueueItem(i){
+  if(!currentQueue || i>=currentQueue.length){ document.getElementById('question').textContent='Liste terminée'; document.getElementById('answer').style.display='none'; current={}; return;}
+  const w=currentQueue[i];
+  const m=getMode();
+  current={obj:w, q:m==='jf'? w.jp:(m==='fj'? w.fr:(Math.random()<0.5?w.jp:w.fr)), a:m==='jf'?w.fr:(m==='fj'?w.jp:(Math.random()<0.5?w.fr:w.jp))};
+  document.getElementById('question').textContent=current.q;
+  document.getElementById('answer').textContent=current.a;
+  document.getElementById('answer').style.display='none';
+}
+
+function nextFromQueue(){ queueIndex++; if(queueIndex>=currentQueue.length){ document.getElementById('question').textContent='Vous avez fini la liste'; document.getElementById('answer').style.display='none'; current={}; return;} showQueueItem(queueIndex);}
+function updateDisplayedFromQueue(){ if(currentQueue && queueIndex<currentQueue.length){ showQueueItem(queueIndex);} else {startNewRandomList();} }
+function showAnswer(){ document.getElementById('answer').style.display='block'; }
+
+/* ---------- Find category for a word ---------- */
+function findWordCategory(jp, fr){
+  for(const cat in vocabulary){
+    if(vocabulary[cat].some(w => w.jp === jp && w.fr === fr)) return cat;
+  }
+  return 'autres';
+}
+
+/* ---------- Je ne connais pas / Ajouté ---------- */
+function toggleHardBtn(){
+  if(!current.obj) return;
+  const btn=document.getElementById('hardBtn');
+  const jp = current.obj.jp;
+  const fr = current.obj.fr;
+  const existing = difficult.find(x => x.jp === jp && x.fr === fr);
+  if(existing){
+    // already in difficult -> give quick feedback
+    btn.textContent = 'Ajouté';
+    setTimeout(()=>{ btn.textContent='⭐ Difficile'; },1500);
+    return;
+  }
+  // find category to store with the difficult word
+  const cat = findWordCategory(jp, fr);
+  const toSave = { jp: jp, fr: fr, cat: cat };
+  difficult.push(toSave);
+  saveHardToStorage();
+  btn.textContent='Ajouté';
+  setTimeout(()=>{ btn.textContent='⭐ Difficile'; },1500);
+  // remove this word from currentQueue (so it won't appear again in this run)
+  const key = jp + '|' + fr;
+  currentQueue = currentQueue.filter(w => !(w.jp + '|' + w.fr === key));
+  if(queueIndex >= currentQueue.length) queueIndex = Math.max(0, currentQueue.length - 1);
+}
+
+/* ---------- Hard words modal & removal (multi) ---------- */
+function openHardWords(){
+  const el=document.getElementById('hardPage'); el.style.display='block';
+  if(!difficult.length){ el.innerHTML=`<h3>Mots difficiles</h3><p>Pas encore de mots.</p><div style="margin-top:12px"><button onclick="closeHardWords()">Fermer</button></div>`; return;}
+  let html=`<h3>Mots difficiles</h3><div style="max-height:50vh;overflow:auto;margin-top:8px">`;
+  difficult.forEach((w,idx)=>{
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;margin-bottom:6px;background:rgba(0,0,0,0.03)">
+      <label style="flex:1;display:flex;gap:8px;align-items:center"><input type="checkbox" class="hard-checkbox" data-idx="${idx}"> <span>${w.jp} → ${w.fr} <small style="opacity:.6">(${w.cat||'?'})</small></span></label>
+    </div>`;
+  });
+  html+=`</div><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="removeSelectedHard()" style="background:#ff6b6b;color:white;padding:8px;border-radius:8px;border:none;cursor:pointer">Supprimer sélection</button>
+    <button onclick="downloadHard()" style="background:#4caf50;color:white;padding:8px;border-radius:8px;border:none;cursor:pointer">Télécharger</button>
+    <button onclick="closeHardWords()">Fermer</button>
+  </div>`;
+  el.innerHTML=html;
+}
+function closeHardWords(){ document.getElementById('hardPage').style.display='none'; }
+
+function removeSelectedHard(){
+  const checked=Array.from(document.querySelectorAll('.hard-checkbox:checked'));
+  if(!checked.length){ alert('Sélectionne au moins un mot.'); return;}
+  if(!confirm(`Supprimer ${checked.length} mot(s) difficile(s) ? Ils seront replacés dans leur catégorie.`)) return;
+  const toRemove=checked.map(cb=>parseInt(cb.dataset.idx,10)).sort((a,b)=>b-a);
+  for(const idx of toRemove){
+    const w = difficult[idx];
+    const cat = w.cat || 'autres';
+    if(!vocabulary[cat]) vocabulary[cat] = [];
+    // avoid duplicates when reinserting
+    if(!vocabulary[cat].some(x=>x.jp===w.jp && x.fr===w.fr)){
+      vocabulary[cat].push({jp:w.jp, fr:w.fr, lvl:1});
+    }
+    difficult.splice(idx,1);
+  }
+  saveVocabToStorage();
+  saveHardToStorage();
+  loadThemes();
+  openHardWords();
+}
+
+function downloadHard(){ const text = difficult.map(w=>`${w.jp}\t${w.fr}\t${w.cat||'autres'}`).join('\n'); const blob = new Blob([text], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mots_difficiles.txt'; a.click(); }
+
+/* ---------- Dictée (50 mots), voix auto, correction visible) ---------- */
+function startDictation(){
+  const el=document.getElementById('dictationPage'); el.style.display='block';
+  const source = Object.values(vocabulary).flat();
+  if(!source || source.length<50){ el.innerHTML=`<h3>Dictée (50 mots)</h3><p>Pas assez de mots.</p><div style="margin-top:12px"><button onclick="closeDictation()">Fermer</button></div>`; return;}
+  let list=[]; while(list.length<50){ const r=source[Math.floor(Math.random()*source.length)]; if(!list.find(x=>x.jp===r.jp)) list.push(r);}
+  let idx=0; let score=0; let level=1;
+  function showNext(){
+    if(idx>=list.length){
+      el.innerHTML=`<h3>Dictée terminée</h3><p>Bravo ! Niveau atteint: ${level}</p><p>Réponses justes : ${score}/${list.length}</p><div style="margin-top:12px"><button onclick="startDictation()">Refaire dictée</button> <button onclick="closeDictation()">Fermer</button></div>`;
+      return;
+    }
+    const w=list[idx];
+    el.innerHTML=`<h3>Dictée (50 mots)</h3><p>Écoute et écris le mot</p>
+      <div style="margin-top:10px;font-weight:600">${idx+1}. Écris :</div>
+      <input id="dictInput" style="width:100%;padding:8px;font-size:16px" placeholder="écris ici..." />
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button id="validateBtn">Valider</button>
+        <button id="replayBtn">🔊 Réécouter</button>
+        <button onclick="closeDictation()">Fermer</button>
+      </div>
+      <div id="dictCorrection" style="margin-top:6px;font-weight:600;color:var(--accent)"></div>
+      <div style="margin-top:6px;font-size:13px">Score actuel: ${score}, Niveau: ${level}</div>`;
+    document.getElementById('dictInput').focus();
+    // auto play
+    playText(w.jp);
+    // attach handlers
+    document.getElementById('replayBtn').onclick = ()=> playText(w.jp);
+    document.getElementById('validateBtn').onclick = ()=> {
+      const inp = document.getElementById('dictInput').value.trim();
+      const corr = document.getElementById('dictCorrection');
+      if(inp === w.jp){
+        score++; corr.textContent = `✅ Correct — ${w.fr}`;
+      } else {
+        corr.textContent = `❌ Faux — ${w.jp} : ${w.fr}`;
+        // add to difficult if not present
+        if(!difficult.find(x=>x.jp===w.jp && x.fr===w.fr)){
+          const cat = findWordCategory(w.jp, w.fr) || 'autres';
+          difficult.push({jp:w.jp, fr:w.fr, cat:cat});
+          saveHardToStorage();
+        }
+      }
+      idx++;
+      level = Math.floor(score / 15) + 1;
+      // show correction 3s then next
+      setTimeout(showNext, 3000);
+    };
+    // allow Enter
+    document.getElementById('dictInput').onkeydown = (e) => { if(e.key === 'Enter') document.getElementById('validateBtn').click(); };
+  }
+  showNext();
+}
+function closeDictation(){ document.getElementById('dictationPage').style.display='none'; }
+
+
+/* ---------- Audio compatible mobile/tablette ---------- */
+function playAudio() {
+  if (!current || !current.obj) return;
+  playText(current.obj.jp);
+}
+
+function playText(text) {
+  // Vérifie que le navigateur supporte speechSynthesis
+  if (!('speechSynthesis' in window)) {
+    alert("Votre navigateur ne supporte pas la synthèse vocale.");
+    return;
+  }
+
+  // Récupère les voix disponibles
+  let voices = speechSynthesis.getVoices();
+
+  // Si getVoices() retourne vide, attendre un petit peu car certaines plateformes chargent les voix asynchrones
+  if (!voices.length) {
+    speechSynthesis.onvoiceschanged = () => playText(text);
+    return;
+  }
+
+  // Cherche une voix japonaise
+  let jpVoice = voices.find(v => v.lang.startsWith('ja')) || voices[0]; // fallback sur la première voix disponible
+
+  if (!jpVoice) {
+    alert("Aucune voix japonaise disponible sur cet appareil.");
+    return;
+  }
+
+  // Crée l'Utterance
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = jpVoice.lang;
+  utter.voice = jpVoice;
+  utter.rate = 0.9;
+  utter.pitch = 1.0;
+
+  // Annule tout audio en cours
+  speechSynthesis.cancel();
+
+  // Joue le texte
+  try {
+    speechSynthesis.speak(utter);
+  } catch (err) {
+    console.error("Erreur synthèse vocale:", err);
+    alert("Impossible de jouer le son sur cet appareil. Assurez-vous d'avoir activé le son et fait un vrai clic/tap.");
+  }
+}
+
+function checkJapaneseVoice() {
+  const voices = speechSynthesis.getVoices();
+  const hasJP = voices.some(v => v.lang.startsWith("ja"));
+  
+  if (!hasJP) {
+    // détecter navigateur
+    const ua = navigator.userAgent;
+    let browser = "votre navigateur";
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Edg")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
+
+    document.getElementById("browserNote").innerHTML =
+      `💡 Note : Certaines voix peuvent ne pas être disponibles sur <b>${browser}</b>.`;
+
+    document.getElementById("japaneseVoiceModal").style.display = "block";
+  }
+}
+
+// Fermeture du modal
+function closeJapaneseVoiceModal() {
+  document.getElementById("japaneseVoiceModal").style.display = "none";
+}
+
+// Firefox : les voix ne sont pas encore chargées au début
+window.speechSynthesis.onvoiceschanged = checkJapaneseVoice;
+
+
+/* ---------- Theme toggle ---------- */
+function toggleTheme(){ document.body.classList.toggle('dark'); }
+
+// ---------- Formulaire pour ajouter un nouveau mot ----------
+function createAddWordForm() {
+    const formContainer = document.getElementById("addWordFormContainer");
+    formContainer.innerHTML = `
+        <h3>Ajouter un mot</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;max-width:300px;">
+            <input type="text" id="newJP" placeholder="Mot en japonais">
+            <input type="text" id="newFR" placeholder="Mot en français">
+            <label>Catégorie :</label>
+            <select id="newCatSelect"></select>
+            <input type="text" id="newCatManual" placeholder="Nouvelle catégorie (optionnelle)">
+            <button id="addWordBtn" style="margin-top:6px;padding:6px 12px;cursor:pointer">Ajouter</button>
+        </div>
+    `;
+    updateCategoryDropdown();
+
+    document.getElementById("addWordBtn").onclick = addNewWord;
+}
+
+// ---------- Met à jour la liste déroulante des catégories ----------
+function updateCategoryDropdown() {
+    const select = document.getElementById("newCatSelect");
+    select.innerHTML = ""; // vide la liste
+    const cats = Object.keys(vocabulary).sort();
+    cats.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        select.appendChild(opt);
+    });
+}
+
+// ---------- Formulaire pour ajouter un nouveau mot ----------
+function createAddWordForm() {
+    const formContainer = document.getElementById("addWordFormContainer");
+    formContainer.innerHTML = `
+        <h3>Ajouter un mot</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;max-width:300px;">
+            <input type="text" id="newJP" placeholder="Mot en japonais">
+            <input type="text" id="newFR" placeholder="Mot en français">
+            <label for="newCatInput">Catégorie :</label>
+            <input list="catDatalist" id="newCatInput" placeholder="Choisir ou ajouter une catégorie">
+            <datalist id="catDatalist"></datalist>
+            <button id="addWordBtn" style="margin-top:6px;padding:6px 12px;cursor:pointer">Ajouter</button>
+        </div>
+    `;
+    updateCategoryDatalist();
+
+    document.getElementById("addWordBtn").onclick = addNewWord;
+}
+
+// ---------- Met à jour le datalist des catégories ----------
+function updateCategoryDatalist() {
+    const datalist = document.getElementById("catDatalist");
+    datalist.innerHTML = ""; // vide la liste
+    const cats = Object.keys(vocabulary).sort();
+    cats.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        datalist.appendChild(opt);
+    });
+}
+
+// ---------- Formulaire pour ajouter un nouveau mot ----------
+function createAddWordForm() {
+    const formContainer = document.getElementById("addWordFormContainer");
+    formContainer.innerHTML = `
+        <h3>Ajouter un mot</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;max-width:300px;">
+            <input type="text" id="newJP" placeholder="Mot en japonais">
+            <input type="text" id="newFR" placeholder="Mot en français">
+            <label for="newCatInput">Catégorie :</label>
+            <input type="text" id="newCatInput" placeholder="Choisir ou ajouter une catégorie" autocomplete="off">
+            <div id="catSuggestions" style="border:1px solid #ccc; display:none; max-height:150px; overflow:auto; position:absolute; background:white; z-index:1000;"></div>
+            <button id="addWordBtn" style="margin-top:6px;padding:6px 12px;cursor:pointer">Ajouter</button>
+        </div>
+    `;
+
+    document.getElementById("newCatInput").addEventListener("focus", showCategorySuggestions);
+    document.getElementById("newCatInput").addEventListener("input", showCategorySuggestions);
+    document.addEventListener("click", e => {
+        if (!e.target.closest("#newCatInput")) {
+            document.getElementById("catSuggestions").style.display = "none";
+        }
+    });
+
+    document.getElementById("addWordBtn").onclick = addNewWord;
+}
+
+// ---------- Affiche la liste des catégories sous le champ ----------
+function showCategorySuggestions() {
+    const input = document.getElementById("newCatInput");
+    const suggestions = document.getElementById("catSuggestions");
+    const val = input.value.toLowerCase();
+    const cats = Object.keys(vocabulary).sort().filter(c => c.toLowerCase().includes(val));
+
+    suggestions.innerHTML = "";
+    if (cats.length === 0) {
+        suggestions.style.display = "none";
+        return;
+    }
+
+    cats.forEach(c => {
+        const div = document.createElement("div");
+        div.textContent = c;
+        div.style.padding = "4px 8px";
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => {
+            input.value = c;
+            suggestions.style.display = "none";
+        });
+        div.addEventListener("mouseover", () => div.style.backgroundColor = "#eee");
+        div.addEventListener("mouseout", () => div.style.backgroundColor = "#fff");
+        suggestions.appendChild(div);
+    });
+
+    const rect = input.getBoundingClientRect();
+    suggestions.style.position = "absolute";
+    suggestions.style.top = rect.bottom + window.scrollY + "px";
+    suggestions.style.left = rect.left + window.scrollX + "px";
+    suggestions.style.width = rect.width + "px";
+    suggestions.style.display = "block";
+}
+
+// ---------- Formulaire pour ajouter un nouveau mot ----------
+function createAddWordForm() {
+    const formContainer = document.getElementById("addWordFormContainer");
+    formContainer.innerHTML = `
+        <h3>Ajouter un mot</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;max-width:300px;position:relative;">
+            <input type="text" id="newJP" placeholder="Mot en japonais">
+            <input type="text" id="newFR" placeholder="Mot en français">
+            <input type="text" id="newCatInput" placeholder="Choisir ou ajouter une catégorie" autocomplete="off">
+            <div id="catSuggestions" style="border:1px solid #ccc; display:none; max-height:150px; overflow:auto; position:absolute; top:100%; left:0; width:100%; background:white; z-index:1000;"></div>
+            <button id="addWordBtn" style="margin-top:6px;padding:6px 12px;cursor:pointer">Ajouter</button>
+        </div>
+    `;
+
+    const input = document.getElementById("newCatInput");
+    input.addEventListener("focus", showCategorySuggestions);
+    input.addEventListener("input", showCategorySuggestions);
+
+    document.addEventListener("click", e => {
+        if (!e.target.closest("#newCatInput")) {
+            document.getElementById("catSuggestions").style.display = "none";
+        }
+    });
+
+    document.getElementById("addWordBtn").onclick = addNewWord;
+}
+
+// ---------- Affiche la liste des catégories sous le champ ----------
+function showCategorySuggestions() {
+    const input = document.getElementById("newCatInput");
+    const suggestions = document.getElementById("catSuggestions");
+    const val = input.value.toLowerCase();
+    const cats = Object.keys(vocabulary).sort().filter(c => c.toLowerCase().includes(val));
+
+    suggestions.innerHTML = "";
+    if (cats.length === 0) {
+        suggestions.style.display = "none";
+        return;
+    }
+
+    cats.forEach(c => {
+        const div = document.createElement("div");
+        div.textContent = c;
+        div.style.padding = "4px 8px";
+        div.style.cursor = "pointer";
+        div.addEventListener("click", () => {
+            input.value = c;
+            suggestions.style.display = "none";
+        });
+        div.addEventListener("mouseover", () => div.style.backgroundColor = "#eee");
+        div.addEventListener("mouseout", () => div.style.backgroundColor = "#fff");
+        suggestions.appendChild(div);
+    });
+
+    suggestions.style.display = "block";
+}
+
+// ---------- Ajouter un nouveau mot ----------
+function addNewWord() {
+    const jpField = document.getElementById("newJP");
+    const frField = document.getElementById("newFR");
+    const catInput = document.getElementById("newCatInput");
+
+    const jp = jpField.value.trim();
+    const fr = frField.value.trim();
+    let cat = catInput.value.trim();
+    cat = normalizeCategory(cat);
+
+    if (!jp || !fr) {
+        alert("JP et FR obligatoires");
+        return;
+    }
+
+    const entry = normalizeWordAndCategory(jp, fr, cat);
+
+    if (!vocabulary[entry.cat]) vocabulary[entry.cat] = [];
+
+    if (vocabulary[entry.cat].find(w => w.jp === entry.jp || w.fr === entry.fr)) {
+        alert("Mot déjà présent dans cette catégorie");
+        return;
+    }
+
+    vocabulary[entry.cat].push({ jp: entry.jp, fr: entry.fr, lvl: 1 });
+    saveVocabToStorage();
+    loadThemes();
+
+    jpField.value = "";
+    frField.value = "";
+    catInput.value = "";
+    document.getElementById("catSuggestions").style.display = "none";
+
+    alert("Mot ajouté !");
+}
+
+// ---------- Normalisation ----------
+function normalizeCategory(cat) {
+    return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase().trim();
+}
+function normalizeWordAndCategory(jp, fr, cat) {
+    return { jp: jp.trim(), fr: fr.trim(), cat: normalizeCategory(cat) };
+}
+
+// ---------- Initialisation ----------
+document.addEventListener("DOMContentLoaded", () => {
+    createAddWordForm();
+});
+/* ---------- Export / Import TXT ---------- */
+function exportTXT(){
+  let lines=[];
+  Object.keys(vocabulary).forEach(cat=>{
+    vocabulary[cat].forEach(w=>{
+      lines.push(`${w.jp}\t${w.fr}\t${cat}`);
+    });
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vocabulary.txt'; a.click();
+}
+function triggerImport(){ document.getElementById('fileInput').click(); }
+document.getElementById('fileInput').addEventListener('change',e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const lines=ev.target.result.split(/\r?\n/);
+    let added = 0;
+    for(const l of lines){
+      if(!l.trim()) continue;
+      const parts=l.split('\t');
+      if(parts.length>=2){
+        const jp=parts[0].trim(); const fr=parts[1].trim(); const catRaw = parts[2] || 'autres';
+        const norm = normalizeWordAndCategory(jp, fr, catRaw);
+        const cat = norm.cat;
+        if(!vocabulary[cat]) vocabulary[cat]=[];
+        // check duplicates globally
+        const existsGlobal = Object.values(vocabulary).flat().some(w => w.jp === norm.jp || w.fr === norm.fr);
+        if(!existsGlobal){
+          vocabulary[cat].push({jp:norm.jp, fr:norm.fr, lvl:1});
+          added++;
+        }
+      }
+    }
+    saveVocabToStorage();
+    loadThemes();
+    if(added) startNewRandomList();
+    alert(`Import terminé — ${added} mot(s) ajoutés (doublons ignorés).`);
+    // reset input
+    e.target.value = '';
+  };
+  reader.readAsText(file,'UTF-8');
+});
+function downloadTemplateTXT(){
+  const text = 'JP<tab>FR<tab>Catégorie\nうし\tvache\tanimaux\nいぬ\tchien\tanimaux\nねこ\tchat\tanimaux';
+  const blob=new Blob([text],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='template.txt'; a.click();
+}
+
+/* ---------- Category Manager ---------- */
+function openCategoryManager(){
+  const el=document.getElementById('categoryManager'); 
+  el.style.display='block';
+  let html='<h3>Gestion catégories</h3>';
+  const cats=Object.keys(vocabulary).sort();
+  cats.forEach(c=>{
+    html+=`<div class="cat-item" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.1)">
+      <label style="flex:1;display:flex;gap:6px;align-items:center">
+        <input type="checkbox" class="cat-checkbox" data-cat="${c}"> ${c} (${vocabulary[c].length} mots)
+      </label>
+      <div style="display:flex;gap:6px">
+        <button onclick="viewCategory('${c}')">Voir mots</button>
+        <button onclick="renameCategoryPrompt('${c}')" style="padding:4px 8px;border-radius:6px;cursor:pointer">Renommer</button>
+      </div>
+    </div>`;
+  });
+
+  // Conteneur fixe en bas
+  html+=`<div style="position:sticky;bottom:0;background:#fff;padding:8px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(0,0,0,0.1)">
+    <button onclick="removeSelectedCats()" style="background:#ff6b6b;color:white;padding:8px;border-radius:8px;border:none;cursor:pointer">Supprimer sélection</button>
+    <button onclick="exportSelectedCats()" style="padding:8px;border-radius:8px;cursor:pointer">Exporter la sélection</button>
+    <button onclick="closeCategoryManager()" style="padding:8px;border-radius:8px;cursor:pointer">Fermer</button>
+  </div>`;
+
+  el.innerHTML=html;
+}
+
+// Fermer le gestionnaire
+function closeCategoryManager(){ 
+  document.getElementById('categoryManager').style.display='none'; 
+}
+
+// Renommer une catégorie
+function renameCategoryPrompt(oldCat){
+  const newCat=prompt("Nouveau nom de la catégorie :", oldCat);
+  if(newCat && newCat!==oldCat){
+    vocabulary[newCat]=vocabulary[oldCat];
+    delete vocabulary[oldCat];
+    saveVocabToStorage();
+    openCategoryManager();
+  }
+}
+
+// Supprimer les catégories sélectionnées
+function removeSelectedCats(){
+  const checked=Array.from(document.querySelectorAll('.cat-checkbox:checked'));
+  if(!checked.length){ alert('Sélectionne au moins une catégorie.'); return;}
+  let totalWords=0;
+  checked.forEach(cb=>{
+    const cat=cb.dataset.cat;
+    totalWords += vocabulary[cat].length;
+  });
+  if(!confirm(`Supprimer ${checked.length} catégorie(s) et leurs ${totalWords} mots ?`)) return;
+
+  checked.forEach(cb=>{
+    const cat=cb.dataset.cat;
+    delete vocabulary[cat];
+  });
+  saveVocabToStorage();
+  openCategoryManager();
+}
+
+// Exporter les catégories sélectionnées
+function exportSelectedCats(){
+  const checked=Array.from(document.querySelectorAll('.cat-checkbox:checked'));
+  if(!checked.length){ alert('Sélectionne au moins une catégorie.'); return;}
+  checked.forEach(cb=>{
+    const cat=cb.dataset.cat;
+    exportCategory(cat);
+  });
+}
+
+// Afficher les mots d'une catégorie avec cases à cocher et boutons fixes
+function viewCategory(cat){
+  const words=vocabulary[cat] || [];
+  let html=`<h3>Mots catégorie ${cat}</h3>
+    <div style="max-height:50vh;overflow:auto;margin-top:8px">`;
+
+  words.forEach((w, index)=>{
+    html+=`<div style="padding:6px;border-bottom:1px solid rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center">
+      <label style="flex:1;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" class="word-checkbox" data-index="${index}"> ${w.jp} → ${w.fr}
+      </label>
+    </div>`;
+  });
+
+  // Conteneur fixe en bas
+  html+=`<div style="position:sticky;bottom:0;background:#fff;padding:8px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(0,0,0,0.1)">
+    <button onclick="openCategoryManager()" style="padding:8px;border-radius:8px;cursor:pointer">Retour</button>
+    <button onclick="removeSelectedWords('${cat}')" style="background:#ff6b6b;color:white;padding:8px;border-radius:8px;border:none;cursor:pointer">Supprimer la sélection</button>
+    <button onclick="exportSelectedWords('${cat}')" style="padding:8px;border-radius:8px;cursor:pointer">Exporter la sélection</button>
+  </div>`;
+
+  document.getElementById('categoryManager').innerHTML=html;
+}
+
+// Supprimer les mots sélectionnés dans une catégorie
+function removeSelectedWords(cat){
+  const checked = Array.from(document.querySelectorAll('.word-checkbox:checked'));
+  if(!checked.length){
+    alert('Sélectionne au moins un mot pour supprimer.');
+    return;
+  }
+
+  if(!confirm(`Supprimer ${checked.length} mot(s) de la catégorie "${cat}" ?`)) return;
+
+  // Supprimer les mots par indices, du plus grand au plus petit
+  const indices = checked.map(cb=>parseInt(cb.dataset.index)).sort((a,b)=>b-a);
+  indices.forEach(idx=>vocabulary[cat].splice(idx,1));
+
+  saveVocabToStorage();
+  viewCategory(cat);
+}
+
+// Exporter les mots sélectionnés dans une catégorie
+function exportSelectedWords(cat){
+  const checked = Array.from(document.querySelectorAll('.word-checkbox:checked'));
+  if(!checked.length){
+    alert('Sélectionne au moins un mot pour exporter.');
+    return;
+  }
+
+  const rows = checked.map(cb=>{
+    const idx=parseInt(cb.dataset.index);
+    const w = vocabulary[cat][idx];
+    return `${w.jp}\t${w.fr}\t${cat}`;
+  }).join('\n');
+
+  const blob = new Blob([rows], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${cat}_selection_vocab.txt`;
+  a.click();
+}
+
+
+// Exporter une catégorie en TXT
+function exportCategory(cat){ 
+  if(!vocabulary[cat]) return; 
+  const rows = vocabulary[cat].map(w=>`${w.jp}\t${w.fr}\t${cat}`).join('\n'); 
+  const blob = new Blob([rows], {type:'text/plain'}); 
+  const a = document.createElement('a'); 
+  a.href = URL.createObjectURL(blob); 
+  a.download = `${cat}_vocab.txt`; 
+  a.click(); 
+}
+
+
+/* ---------- Hard revision ---------- */
+function startHardRevision(){
+  if(!difficult.length){ alert('Pas encore de mots difficiles'); return;}
+  // use only jp/fr objects (no cat changes)
+  currentQueue = difficult.map(w => ({ jp: w.jp, fr: w.fr, lvl:1 }));
+  queueIndex = 0;
+  showQueueItem(queueIndex);
+}
+
+/* ---------- Init ---------- */
+loadThemes();
+startNewRandomList();
+
+</script>
+ 
+
+</body>
+</html>
