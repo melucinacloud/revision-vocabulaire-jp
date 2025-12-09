@@ -283,7 +283,7 @@ footer {
         <button onclick="exportTXT()">Exporter</button>
         <button onclick="downloadTemplateTXT()">Modèle TXT</button>
 <button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
-<button onclick="loadVocabFromCloud()">Charger depuis le Cloud</button>
+<button onclick="loadVocabFromCloud(false)">Charger depuis le Cloud</button>
 
       </div>
       <p style="
@@ -377,17 +377,35 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
-// Générer ou récupérer un ID utilisateur unique
+const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
+
+// Générer ou récupérer un ID utilisateur
 let userId = localStorage.getItem("userId");
 if (!userId) {
   userId = crypto.randomUUID(); // ID unique
   localStorage.setItem("userId", userId);
 }
 
-// Chargement automatique au démarrage, sans popup
+// Sauvegarde sur le Cloud
+async function saveVocabToCloud() {
+  try {
+    const res = await fetch(`${WORKER_URL}/save?user=${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(vocabulary)
+    });
+    if (res.ok) alert("Vocabulaire sauvegardé !");
+    else alert("Erreur de sauvegarde");
+  } catch (err) {
+    console.error(err);
+    alert("Impossible de contacter le serveur");
+  }
+}
+
+// Chargement depuis le Cloud
 async function loadVocabFromCloud(auto = true) {
   try {
-    const res = await fetch(`https://revision-api.nihongotips.workers.dev/load?user=${userId}`);
+    const res = await fetch(`${WORKER_URL}/load?user=${userId}`);
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
@@ -402,26 +420,8 @@ async function loadVocabFromCloud(auto = true) {
   }
 }
 
-// Sauvegarde sur le Cloud
-async function saveVocabToCloud() {
-  try {
-    const res = await fetch(`https://revision-api.nihongotips.workers.dev/save?user=${userId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vocabulary)
-    });
-    if (res.ok) alert("Vocabulaire sauvegardé !");
-    else alert("Erreur de sauvegarde");
-  } catch (err) {
-    console.error(err);
-    alert("Impossible de contacter le serveur");
-  }
-}
-
-// Charger automatiquement au chargement de la page (pas de popup)
+// Charger automatiquement au démarrage sans popup
 window.addEventListener("load", () => loadVocabFromCloud(true));
-
-
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
   if(!s) return '';
