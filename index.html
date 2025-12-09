@@ -282,7 +282,7 @@ footer {
         <button onclick="triggerImport()">Importer</button>
         <button onclick="exportTXT()">Exporter</button>
         <button onclick="downloadTemplateTXT()">Modèle TXT</button>
-        <button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
+<button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
 <button onclick="loadVocabFromCloud()">Charger depuis le Cloud</button>
 
       </div>
@@ -377,39 +377,44 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
-const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
-
+// Sauvegarde sur le Cloud
 async function saveVocabToCloud() {
   try {
-    const res = await fetch(`${WORKER_URL}/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("https://revision-api.nihongotips.workers.dev/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(vocabulary)
     });
-    if (res.ok) alert('Vocabulaire sauvegardé !');
-    else alert('Erreur de sauvegarde');
+    if (res.ok) alert("Vocabulaire sauvegardé !");
+    else alert("Erreur de sauvegarde");
   } catch (err) {
     console.error(err);
-    alert('Impossible de contacter le serveur');
+    alert("Impossible de contacter le serveur");
   }
 }
 
+// Chargement depuis le Cloud
 async function loadVocabFromCloud() {
   try {
-    const res = await fetch(`${WORKER_URL}/load`);
+    const res = await fetch("https://revision-api.nihongotips.workers.dev/load");
     if (res.ok) {
       const data = await res.json();
       Object.assign(vocabulary, data);
       loadThemes(); // recharge le site avec les données
-      alert('Vocabulaire chargé !');
+      alert("Vocabulaire chargé !");
     } else {
-      alert('Erreur lors du chargement');
+      alert("Erreur lors du chargement");
     }
   } catch (err) {
     console.error(err);
-    alert('Impossible de contacter le serveur');
+    alert("Impossible de contacter le serveur");
   }
 }
+
+// Charger automatiquement au démarrage
+window.addEventListener("DOMContentLoaded", () => {
+  loadVocabFromCloud();
+});
 
 
 /* ---------- String normalization & category fusion ---------- */
