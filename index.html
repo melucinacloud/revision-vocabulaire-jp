@@ -244,7 +244,9 @@ footer {
       </div>
     </div>
 
-
+<div id="cloud-status" style="position:fixed; top:10px; right:10px; 
+     background:#4CAF50; color:white; padding:5px 10px; border-radius:5px; 
+     display:none; z-index:1000;"></div>
 
     <div class="section">
       <div class="mlabel">Mode</div>
@@ -381,75 +383,18 @@ let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
 let token = localStorage.getItem("userToken");
 
-// --- REGISTER ---
-document.getElementById("register-btn").onclick = async () => {
-  const email = document.getElementById("login-email").value.trim();
-  const pass = document.getElementById("login-password").value;
-  if (!email || !pass) return alert("Email et mot de passe requis");
-
-  try {
-    const res = await fetch(`${WORKER_URL}/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, pass })
-    });
-    if (res.ok) alert("Compte créé. Vous pouvez maintenant vous connecter.");
-    else alert(await res.text());
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de l'inscription");
-  }
-};
-
-// --- LOGIN ---
-document.getElementById("login-btn").onclick = async () => {
-  const email = document.getElementById("login-email").value.trim();
-  const pass = document.getElementById("login-password").value;
-  if (!email || !pass) return alert("Email et mot de passe requis");
-
-  try {
-    const res = await fetch(`${WORKER_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, pass })
-    });
-    if (!res.ok) return alert(await res.text());
-
-    const data = await res.json();
-    token = data.token;
-    localStorage.setItem("userToken", token);
-
-    updateUIAfterLogin(email);
-    await loadVocabFromCloud(true);
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la connexion");
-  }
-};
-
-// --- LOGOUT ---
-function logout() {
-  token = null;
-  localStorage.removeItem("userToken");
-  document.getElementById("loginForm").style.display = "block";
-  document.getElementById("user-info").style.display = "none";
+// --- Fonction pour afficher un message temporaire ---
+function showCloudStatus(message, success = true) {
+  const div = document.getElementById("cloud-status");
+  div.innerText = message;
+  div.style.background = success ? "#4CAF50" : "#f44336";
+  div.style.display = "block";
+  setTimeout(() => { div.style.display = "none"; }, 2000);
 }
-
-// --- UI après login ---
-function updateUIAfterLogin(email) {
-  document.getElementById("loginForm").style.display = "none";
-  document.getElementById("user-info").style.display = "block";
-  document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
-  document.getElementById("logout-btn").onclick = logout;
-}
-
-// --- INITIALISATION ---
-vocabulary.hardWords = vocabulary.hardWords || [];
-
 
 // --- SAVE CLOUD ---
 async function saveVocabToCloud() {
-  if (!token) return console.log("Pas connecté");
+  if (!token) return showCloudStatus("Pas connecté", false);
 
   try {
     const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
@@ -460,11 +405,14 @@ async function saveVocabToCloud() {
     if (!res.ok) {
       const text = await res.text();
       console.error("Erreur cloud :", text);
+      showCloudStatus("Erreur sauvegarde", false);
     } else {
       console.log("Vocabulaire sauvegardé sur le cloud ✅");
+      showCloudStatus("Vocabulaire sauvegardé ✅");
     }
   } catch (err) {
     console.error("Erreur saveVocabToCloud :", err);
+    showCloudStatus("Erreur sauvegarde", false);
   }
 }
 
@@ -490,8 +438,9 @@ async function loadVocabFromCloud(auto = true) {
     ]));
 
     loadThemes();
+
     if (!auto) alert("Vocabulaire chargé !");
-    if (auto) console.log("Synchronisation cloud effectuée ✅");
+    if (auto) showCloudStatus("Synchronisation cloud ✅");
   } catch (err) {
     console.error(err);
     if (!auto) alert("Impossible de contacter le serveur");
@@ -517,18 +466,12 @@ function removeHardWord(word) {
   }
 }
 
-// --- Auto-sync toutes les 10 secondes ---
-setInterval(() => {
-  if (token) loadVocabFromCloud(true);
-}, 10000);
-
-
 // --- Supprimer catégorie ---
 function removeCategory(cat) {
   if (vocabulary[cat]) {
     delete vocabulary[cat];
-    saveVocabToCloud();
     loadThemes();
+    saveVocabToCloud(); // sauvegarde automatique
   }
 }
 
@@ -554,9 +497,9 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
 
       loadThemes();
       saveVocabToCloud();
-      alert("Vocabulaire importé et synchronisé !");
+      showCloudStatus("Vocabulaire importé ✅");
     } catch {
-      alert("Fichier invalide");
+      showCloudStatus("Fichier invalide", false);
     }
   };
   reader.readAsText(file);
@@ -572,6 +515,11 @@ function exportTXT() {
   a.click();
 }
 
+// --- Auto-sync toutes les 10 secondes ---
+setInterval(() => {
+  if (token) loadVocabFromCloud(true);
+}, 10000);
+
 // --- Auto login ---
 window.addEventListener("load", async () => {
   if (token) {
@@ -580,6 +528,7 @@ window.addEventListener("load", async () => {
     await loadVocabFromCloud(true);
   }
 });
+
 
 
 /* ---------- String normalization & category fusion ---------- */
