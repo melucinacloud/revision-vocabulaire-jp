@@ -394,7 +394,6 @@ document.getElementById("register-btn").onclick = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, pass })
     });
-
     if (res.ok) alert("Compte créé. Vous pouvez maintenant vous connecter.");
     else alert(await res.text());
   } catch (err) {
@@ -416,7 +415,6 @@ document.getElementById("login-btn").onclick = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, pass })
     });
-
     if (!res.ok) return alert(await res.text());
 
     const data = await res.json();
@@ -452,23 +450,29 @@ vocabulary.hardWords = vocabulary.hardWords || [];
 
 // --- Sauvegarde sur le Cloud ---
 async function saveVocabToCloud() {
-  if (!token) return;
+  if (!token) return console.log("Pas connecté");
+
+  const dataToSave = {
+    ...vocabulary,
+    hardWords: vocabulary.hardWords
+  };
 
   try {
+    console.log("Sauvegarde cloud...", dataToSave);
     const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vocabulary)
+      body: JSON.stringify(dataToSave)
     });
-
-    if (!res.ok) console.error(await res.text());
-    else console.log("Vocabulaire sauvegardé sur le cloud ✅");
+    const text = await res.text();
+    console.log("Réponse cloud :", res.status, text);
+    if (!res.ok) alert("Erreur cloud : " + text);
   } catch (err) {
-    console.error(err);
+    console.error("Erreur saveVocabToCloud :", err);
   }
 }
 
-// --- Chargement depuis le Cloud avec remplacement complet ---
+// --- Chargement depuis le Cloud avec fusion ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -478,9 +482,16 @@ async function loadVocabFromCloud(auto = true) {
 
     const cloudData = await res.json();
 
-    // Remplace entièrement le vocabulaire local par celui du cloud
-    vocabulary = cloudData || {};
-    vocabulary.hardWords = vocabulary.hardWords || [];
+    // Fusion vocab (exclut hardWords pour gérer séparément)
+    for (const key in cloudData) {
+      if (key !== "hardWords") vocabulary[key] = cloudData[key];
+    }
+
+    // Fusion hardWords sans doublons
+    vocabulary.hardWords = Array.from(new Set([
+      ...(vocabulary.hardWords || []),
+      ...(cloudData.hardWords || [])
+    ]));
 
     loadThemes(); // recharge UI
     if (!auto) alert("Vocabulaire chargé !");
@@ -500,14 +511,11 @@ function addHardWord(word) {
 
 // --- Supprimer un mot difficile ---
 function removeHardWord(word) {
-  const index = vocabulary.hardWords.indexOf(word);
-  if (index > -1) {
-    vocabulary.hardWords.splice(index, 1);
-    saveVocabToCloud(); // sync automatique
-  }
+  vocabulary.hardWords = vocabulary.hardWords.filter(w => w !== word);
+  saveVocabToCloud(); // sync automatique
 }
 
-// --- Import / Export TXT ---
+// --- Import TXT ---
 function triggerImport() {
   document.getElementById("fileInput").click();
 }
@@ -520,12 +528,17 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
     try {
       const imported = JSON.parse(ev.target.result);
 
-      // Remplace vocab et hardWords
-      vocabulary = { ...imported };
-      vocabulary.hardWords = vocabulary.hardWords || [];
+      // Fusion vocab et hardWords
+      for (const key in imported) {
+        if (key !== "hardWords") vocabulary[key] = imported[key];
+      }
+      vocabulary.hardWords = Array.from(new Set([
+        ...(vocabulary.hardWords || []),
+        ...(imported.hardWords || [])
+      ]));
 
       loadThemes();
-      saveVocabToCloud(); // sync après import
+      saveVocabToCloud(); // sync automatique après import
       alert("Vocabulaire importé et synchronisé !");
     } catch {
       alert("Fichier invalide");
@@ -534,6 +547,7 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
+// --- Export TXT ---
 function exportTXT() {
   const dataStr = JSON.stringify(vocabulary, null, 2);
   const blob = new Blob([dataStr], { type: "text/plain" });
@@ -544,14 +558,13 @@ function exportTXT() {
 }
 
 // --- Auto login au refresh ---
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   if (token) {
     const email = atob(token);
     updateUIAfterLogin(email);
-    loadVocabFromCloud(true);
+    await loadVocabFromCloud(true);
   }
 });
-
 
 
 /* ---------- String normalization & category fusion ---------- */
