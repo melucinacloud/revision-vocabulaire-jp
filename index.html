@@ -387,6 +387,7 @@ vocabulary.hardWords = vocabulary.hardWords || [];
 // --- Feedback visuel ---
 function showCloudStatus(msg, success = true) {
   const div = document.getElementById("cloud-status");
+  if (!div) return;
   div.innerText = msg;
   div.style.background = success ? "#4CAF50" : "#f44336";
   div.style.display = "block";
@@ -419,8 +420,8 @@ let autoSyncInterval = null;
 function startAutoSync() {
   if (autoSyncInterval) clearInterval(autoSyncInterval);
   autoSyncInterval = setInterval(() => {
-    if (token) loadVocabFromCloud(true);
-  }, 10000);
+    if (token) loadVocabFromCloud(true); // auto-sync silencieux
+  }, 10000); // toutes les 10s
 }
 
 document.getElementById("login-btn").onclick = async () => {
@@ -441,7 +442,7 @@ document.getElementById("login-btn").onclick = async () => {
     localStorage.setItem("userToken", token);
 
     updateUIAfterLogin(email);
-    await loadVocabFromCloud(false);
+    await loadVocabFromCloud(true); // load silencieux au login
     startAutoSync();
   } catch (err) {
     console.error(err);
@@ -574,7 +575,7 @@ window.addEventListener("load", async () => {
     try {
       const email = atob(token);
       updateUIAfterLogin(email);
-      await loadVocabFromCloud(false);
+      await loadVocabFromCloud(true); // auto-sync silencieux
       startAutoSync();
     } catch {
       token = null;
