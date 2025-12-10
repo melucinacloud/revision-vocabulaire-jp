@@ -382,151 +382,47 @@ let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
 let token = localStorage.getItem("userToken");
+vocabulary.hardWords = vocabulary.hardWords || [];
 
-// --- Fonction pour afficher un message temporaire ---
-function showCloudStatus(message, success = true) {
+// --- Feedback visuel ---
+function showCloudStatus(msg, success = true) {
   const div = document.getElementById("cloud-status");
-  div.innerText = message;
+  div.innerText = msg;
   div.style.background = success ? "#4CAF50" : "#f44336";
   div.style.display = "block";
   setTimeout(() => { div.style.display = "none"; }, 2000);
 }
 
-// --- SAVE CLOUD ---
-async function saveVocabToCloud() {
-  if (!token) return showCloudStatus("Pas connecté", false);
+// --- REGISTER ---
+document.getElementById("register-btn").onclick = async () => {
+  const email = document.getElementById("login-email").value.trim();
+  const pass = document.getElementById("login-password").value;
+  if (!email || !pass) return alert("Email et mot de passe requis");
 
   try {
-    const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
+    const res = await fetch(`${WORKER_URL}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vocabulary)
+      body: JSON.stringify({ email, pass })
     });
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("Erreur cloud :", text);
-      showCloudStatus("Erreur sauvegarde", false);
-    } else {
-      console.log("Vocabulaire sauvegardé sur le cloud ✅");
-      showCloudStatus("Vocabulaire sauvegardé ✅");
-    }
-  } catch (err) {
-    console.error("Erreur saveVocabToCloud :", err);
-    showCloudStatus("Erreur sauvegarde", false);
-  }
-}
-
-// --- LOAD CLOUD ---
-async function loadVocabFromCloud(auto = true) {
-  if (!token) return;
-
-  try {
-    const res = await fetch(`${WORKER_URL}/load?user=${token}`);
-    if (!res.ok) return;
-
-    const cloudData = await res.json();
-
-    // Fusion des catégories existantes (hors hardWords)
-    for (const key in cloudData) {
-      if (key !== "hardWords") vocabulary[key] = cloudData[key];
-    }
-
-    // Fusion hardWords sans doublons
-    vocabulary.hardWords = Array.from(new Set([
-      ...(vocabulary.hardWords || []),
-      ...(cloudData.hardWords || [])
-    ]));
-
-    loadThemes();
-
-    if (!auto) alert("Vocabulaire chargé !");
-    if (auto) showCloudStatus("Synchronisation cloud ✅");
+    if (res.ok) alert("Compte créé. Vous pouvez maintenant vous connecter.");
+    else alert(await res.text());
   } catch (err) {
     console.error(err);
-    if (!auto) alert("Impossible de contacter le serveur");
+    alert("Erreur lors de l'inscription");
   }
-}
-
-// --- Ajouter mot difficile ---
-function addHardWord(word) {
-  if (!vocabulary.hardWords.includes(word)) {
-    vocabulary.hardWords.push(word);
-    loadThemes();
-    saveVocabToCloud(); // sauvegarde automatique
-  }
-}
-
-// --- Supprimer mot difficile ---
-function removeHardWord(word) {
-  const index = vocabulary.hardWords.indexOf(word);
-  if (index > -1) {
-    vocabulary.hardWords.splice(index, 1);
-    loadThemes();
-    saveVocabToCloud(); // sauvegarde automatique
-  }
-}
-
-// --- Supprimer catégorie ---
-function removeCategory(cat) {
-  if (vocabulary[cat]) {
-    delete vocabulary[cat];
-    loadThemes();
-    saveVocabToCloud(); // sauvegarde automatique
-  }
-}
-
-// --- IMPORT TXT ---
-function triggerImport() {
-  document.getElementById("fileInput").click();
-}
-document.getElementById("fileInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    try {
-      const imported = JSON.parse(ev.target.result);
-
-      for (const key in imported) {
-        if (key !== "hardWords") vocabulary[key] = imported[key];
-      }
-      vocabulary.hardWords = Array.from(new Set([
-        ...(vocabulary.hardWords || []),
-        ...(imported.hardWords || [])
-      ]));
-
-      loadThemes();
-      saveVocabToCloud();
-      showCloudStatus("Vocabulaire importé ✅");
-    } catch {
-      showCloudStatus("Fichier invalide", false);
-    }
-  };
-  reader.readAsText(file);
-});
-
-// --- EXPORT TXT ---
-function exportTXT() {
-  const dataStr = JSON.stringify(vocabulary, null, 2);
-  const blob = new Blob([dataStr], { type: "text/plain" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "vocabulaire.txt";
-  a.click();
-}
-
-// --- Auto-sync ---
-let autoSyncInterval = null;
-
-// Après login réussi
-function startAutoSync() {
-  if (autoSyncInterval) clearInterval(autoSyncInterval); // sécurité
-  autoSyncInterval = setInterval(() => {
-    if (token) loadVocabFromCloud(true);
-  }, 10000); // toutes les 10s
-}
+};
 
 // --- LOGIN ---
+let autoSyncInterval = null;
+
+function startAutoSync() {
+  if (autoSyncInterval) clearInterval(autoSyncInterval);
+  autoSyncInterval = setInterval(() => {
+    if (token) loadVocabFromCloud(true);
+  }, 10000);
+}
+
 document.getElementById("login-btn").onclick = async () => {
   const email = document.getElementById("login-email").value.trim();
   const pass = document.getElementById("login-password").value;
@@ -545,28 +441,13 @@ document.getElementById("login-btn").onclick = async () => {
     localStorage.setItem("userToken", token);
 
     updateUIAfterLogin(email);
-    await loadVocabFromCloud(false); // load une fois au login
-    startAutoSync(); // démarrer auto-sync après login
+    await loadVocabFromCloud(false);
+    startAutoSync();
   } catch (err) {
     console.error(err);
     alert("Erreur lors de la connexion");
   }
 };
-
-// --- Auto login au chargement de la page ---
-window.addEventListener("load", async () => {
-  if (token) {
-    try {
-      const email = atob(token);
-      updateUIAfterLogin(email);
-      await loadVocabFromCloud(false); // charge une seule fois
-      startAutoSync(); // auto-sync seulement si connecté
-    } catch {
-      token = null;
-      localStorage.removeItem("userToken");
-    }
-  }
-});
 
 // --- LOGOUT ---
 function logout() {
@@ -574,12 +455,133 @@ function logout() {
   localStorage.removeItem("userToken");
   document.getElementById("loginForm").style.display = "block";
   document.getElementById("user-info").style.display = "none";
-
-  if (autoSyncInterval) clearInterval(autoSyncInterval); // stop auto-sync
+  if (autoSyncInterval) clearInterval(autoSyncInterval);
 }
 
+// --- UI après login ---
+function updateUIAfterLogin(email) {
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("user-info").style.display = "block";
+  document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
+  document.getElementById("logout-btn").onclick = logout;
+}
 
+// --- SAVE CLOUD ---
+async function saveVocabToCloud() {
+  if (!token) return showCloudStatus("Pas connecté", false);
+  try {
+    const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(vocabulary)
+    });
+    if (!res.ok) showCloudStatus("Erreur sauvegarde", false);
+    else showCloudStatus("Vocabulaire sauvegardé ✅");
+  } catch {
+    showCloudStatus("Erreur sauvegarde", false);
+  }
+}
 
+// --- LOAD CLOUD ---
+async function loadVocabFromCloud(auto = true) {
+  if (!token) return;
+  try {
+    const res = await fetch(`${WORKER_URL}/load?user=${token}`);
+    if (!res.ok) return;
+
+    const cloudData = await res.json();
+
+    for (const key in cloudData) {
+      if (key !== "hardWords") vocabulary[key] = cloudData[key];
+    }
+    vocabulary.hardWords = Array.from(new Set([
+      ...(vocabulary.hardWords || []),
+      ...(cloudData.hardWords || [])
+    ]));
+
+    loadThemes();
+
+    if (!auto) alert("Vocabulaire chargé !");
+    if (auto) showCloudStatus("Synchronisation cloud ✅");
+  } catch {
+    if (!auto) alert("Impossible de contacter le serveur");
+  }
+}
+
+// --- Ajouter / Supprimer mots difficiles ---
+function addHardWord(word) {
+  if (!vocabulary.hardWords.includes(word)) {
+    vocabulary.hardWords.push(word);
+    loadThemes();
+    saveVocabToCloud();
+  }
+}
+function removeHardWord(word) {
+  const i = vocabulary.hardWords.indexOf(word);
+  if (i > -1) {
+    vocabulary.hardWords.splice(i, 1);
+    loadThemes();
+    saveVocabToCloud();
+  }
+}
+
+// --- Supprimer catégorie ---
+function removeCategory(cat) {
+  if (vocabulary[cat]) {
+    delete vocabulary[cat];
+    loadThemes();
+    saveVocabToCloud();
+  }
+}
+
+// --- Import / Export ---
+function triggerImport() { document.getElementById("fileInput").click(); }
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      for (const key in imported) {
+        if (key !== "hardWords") vocabulary[key] = imported[key];
+      }
+      vocabulary.hardWords = Array.from(new Set([
+        ...(vocabulary.hardWords || []),
+        ...(imported.hardWords || [])
+      ]));
+      loadThemes();
+      saveVocabToCloud();
+      showCloudStatus("Vocabulaire importé ✅");
+    } catch {
+      showCloudStatus("Fichier invalide", false);
+    }
+  };
+  reader.readAsText(file);
+});
+function exportTXT() {
+  const dataStr = JSON.stringify(vocabulary, null, 2);
+  const blob = new Blob([dataStr], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "vocabulaire.txt";
+  a.click();
+}
+
+// --- Auto login au chargement ---
+window.addEventListener("load", async () => {
+  if (token) {
+    try {
+      const email = atob(token);
+      updateUIAfterLogin(email);
+      await loadVocabFromCloud(false);
+      startAutoSync();
+    } catch {
+      token = null;
+      localStorage.removeItem("userToken");
+    }
+  }
+});
 
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
