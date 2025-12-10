@@ -292,7 +292,7 @@ footer {
       <button onclick="playAudio()">🔊 Ecouter en japonais</button>
       <button onclick="showAnswer()">Réponse</button>
       <button onclick="nextFromQueue()">Suivant</button>
-      <button onclick="toggleHardBtn()" class="small" id="hardBtn">⭐ Difficile</button>
+     <button onclick="toggleHardBtn()" id="hardBtn">⭐ Difficile</button>
     </div>
       <footer>
     <p>© 2025 nihongotips</p>
@@ -728,6 +728,70 @@ function removeSelectedHard(){
 }
 
 function downloadHard(){ const text = difficult.map(w=>`${w.jp}\t${w.fr}\t${w.cat||'autres'}`).join('\n'); const blob = new Blob([text], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mots_difficiles.txt'; a.click(); }
+
+
+// ----- Fonction du bouton ⭐ Difficile -----
+function toggleHardBtn() {
+    if (!current || !current.obj) return;
+
+    const word = current.obj; // objet {jp, fr, cat}
+    const btn = document.getElementById("hardBtn");
+
+    // Vérifie si le mot est déjà dans la liste difficile
+    const exists = difficult.some(w => w.jp === word.jp && w.fr === word.fr);
+
+    if (!exists) {
+        // Ajoute le mot à la liste difficile
+        difficult.push({ jp: word.jp, fr: word.fr, cat: word.cat || 'autres' });
+        localStorage.setItem('hardWords_v1', JSON.stringify(difficult));
+        updateHardWordsUI();
+
+        // Changement visuel du bouton
+        btn.textContent = "Ajouté ⭐";
+        btn.style.backgroundImage = "none"; // annule le gradient CSS
+        btn.style.backgroundColor = "#FFD700"; // doré
+        btn.style.color = "#000";
+
+        // Revenir au texte normal après 1,5s
+        setTimeout(() => {
+            btn.textContent = "⭐ Difficile";
+            btn.style.background = ""; // revient au style du CSS
+            btn.style.color = "";
+        }, 1500);
+    }
+}
+
+
+
+
+// --- Affiche un mot de la liste ---
+function showQueueItem(i) {
+    if (!currentQueue || i >= currentQueue.length) {
+        document.getElementById('question').textContent = 'Liste terminée';
+        document.getElementById('answer').style.display = 'none';
+        current = {};
+        return;
+    }
+
+    const w = currentQueue[i];
+    const m = getMode();
+    current = { obj: w, q: m==='jf'? w.jp : (m==='fj'? w.fr : (Math.random()<0.5?w.jp:w.fr)), 
+                a: m==='jf'? w.fr : (m==='fj'? w.jp : (Math.random()<0.5?w.fr:w.jp)) };
+
+    document.getElementById('question').textContent = current.q;
+    document.getElementById('answer').textContent = current.a;
+    document.getElementById('answer').style.display = 'none';
+
+    // **Reset du bouton**
+    const btn = document.getElementById("hardBtn");
+    btn.textContent = "⭐ Difficile";
+    btn.style.backgroundImage = "";  // remet le gradient CSS
+    btn.style.backgroundColor = "";
+    btn.style.color = "";
+    btn.disabled = false;
+}
+
+
 
 
 /* ---------- Dictée (50 mots), voix auto, correction visible) ---------- */
