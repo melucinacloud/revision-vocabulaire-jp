@@ -222,17 +222,15 @@ footer {
   <div class="menu left-menu">
     <!-- Formulaire login -->
 <div id="loginForm">
-  <input id="login-email" placeholder="Email">
-  <input id="login-password" type="password" placeholder="Mot de passe">
-  <button id="register-btn">Créer un compte</button>
-  <button id="login-btn">Se connecter</button>
-</div>
-
+      <input id="username" placeholder="Email">
+      <input id="password" type="password" placeholder="Mot de passe">
+      <button onclick="register()">Créer un compte</button>
+      <button onclick="login()">Se connecter</button>
+    </div>
 <div id="user-info" style="display:none;">
   <span id="welcome-user"></span>
   <button id="logout-btn">Déconnexion</button>
 </div>
-
 
     <h2>Menu</h2>
 
@@ -296,8 +294,8 @@ footer {
         <button onclick="triggerImport()">Importer</button>
         <button onclick="exportTXT()">Exporter</button>
         <button onclick="downloadTemplateTXT()">Modèle TXT</button>
-<button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
-<button onclick="loadVocabFromCloud()">Charger depuis le Cloud</button>
+<button id="save-btn">Sauvegarder sur le Cloud</button>
+<button id="load-btn">Charger depuis le Cloud</button>
       </div>
       <p style="
   margin-top:10px; 
@@ -391,103 +389,117 @@ let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
+let token = localStorage.getItem("userToken");
 
-// Toujours la même clé partout !
-let userToken = localStorage.getItem("userToken");
+// --- UTILS ---
+function updateUIAfterLogin(email) {
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("user-info").style.display = "block";
+  document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
+}
 
-/* REGISTER */
+function logout() {
+  token = null;
+  localStorage.removeItem("userToken");
+  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("user-info").style.display = "none";
+}
+
+// --- REGISTER ---
 async function register() {
   const email = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  const pass = document.getElementById("password").value;
+
+  if (!email || !pass) return alert("Veuillez remplir tous les champs");
 
   const res = await fetch(`${WORKER_URL}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, pass: password })
+    body: JSON.stringify({ email, pass })
   });
 
-  alert(await res.text());
+  if (res.ok) {
+    alert("Compte créé. Vous pouvez maintenant vous connecter.");
+  } else {
+    alert(await res.text());
+  }
 }
 
-/* LOGIN */
+// --- LOGIN ---
 async function login() {
   const email = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
+  const pass = document.getElementById("password").value;
+
+  if (!email || !pass) return alert("Veuillez remplir tous les champs");
 
   const res = await fetch(`${WORKER_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, pass: password })
+    body: JSON.stringify({ email, pass })
   });
 
-  if (!res.ok) {
-    alert(await res.text());
-    return;
-  }
+  if (!res.ok) return alert(await res.text());
 
   const data = await res.json();
-  userToken = data.token;
-
-  localStorage.setItem("userToken", userToken);
-  localStorage.setItem("userEmail", email);
+  token = data.token;
+  localStorage.setItem("userToken", token);
 
   updateUIAfterLogin(email);
   loadVocabFromCloud();
 }
 
-/* LOAD VOCAB */
-async function loadVocabFromCloud() {
-  if (!userToken) return;
+// --- SAVE / LOAD VOCAB ---
+async function saveVocabToCloud() {
+  if (!token) return alert("Connectez-vous d'abord");
 
-  const res = await fetch(`${WORKER_URL}/load?user=${userToken}`);
+  try {
+    const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(vocabulary)
+    });
 
-  if (!res.ok) {
-    console.warn("Rien chargé depuis le cloud");
-    return;
+    if (res.ok) alert("Vocabulaire sauvegardé !");
+    else alert(await res.text());
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la sauvegarde");
   }
-
-  const data = await res.json();
-  Object.assign(vocabulary, data);
-  loadThemes();
 }
 
-/* SAVE VOCAB */
-async function saveToCloud() {
-  if (!userToken) return alert("Connexion requise");
+async function loadVocabFromCloud(auto = true) {
+  if (!token) return;
 
-  await fetch(`${WORKER_URL}/save?user=${userToken}`, {
-    method: "POST",
-    body: JSON.stringify(vocabulary)
-  });
+  try {
+    const res = await fetch(`${WORKER_URL}/load?user=${token}`);
+    if (!res.ok) return;
 
-  alert("Sauvegardé dans le cloud !");
+    const data = await res.json();
+    Object.assign(vocabulary, data);
+    loadThemes(); // recharge le site
+
+    if (!auto) alert("Vocabulaire chargé !");
+  } catch (err) {
+    console.error(err);
+    if (!auto) alert("Impossible de contacter le serveur");
+  }
 }
 
-/* AUTO LOGIN */
-window.onload = () => {
-  const token = localStorage.getItem("userToken");
-  const email = localStorage.getItem("userEmail");
+// --- EVENT LISTENERS ---
+document.getElementById("register-btn").onclick = register;
+document.getElementById("login-btn").onclick = login;
+document.getElementById("logout-btn").onclick = logout;
+document.getElementById("save-btn")?.addEventListener("click", saveVocabToCloud);
+document.getElementById("load-btn")?.addEventListener("click", () => loadVocabFromCloud(false));
 
-  if (token && email) {
-    userToken = token;
+// --- AUTO LOGIN ---
+window.addEventListener("load", () => {
+  if (token) {
+    const email = atob(token);
     updateUIAfterLogin(email);
-    loadVocabFromCloud();
+    loadVocabFromCloud(true);
   }
-};
-
-/* UI UPDATE */
-function updateUIAfterLogin(email) {
-  document.getElementById("loginForm").style.display = "none";
-  document.getElementById("user-info").style.display = "block";
-  document.getElementById("welcome-user").textContent = "Bonjour " + email;
-}
-
-/* LOGOUT */
-document.getElementById("logout-btn").onclick = () => {
-  localStorage.removeItem("userToken");
-  localStorage.removeItem("userEmail");
-  location.reload();
-};
+});
 
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
