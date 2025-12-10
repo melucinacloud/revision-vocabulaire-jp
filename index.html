@@ -446,6 +446,7 @@ function updateUIAfterLogin(email) {
 // --- INITIALISATION ---
 vocabulary.hardWords = vocabulary.hardWords || [];
 
+
 // --- SAVE CLOUD ---
 async function saveVocabToCloud() {
   if (!token) return console.log("Pas connecté");
@@ -458,7 +459,9 @@ async function saveVocabToCloud() {
     });
     if (!res.ok) {
       const text = await res.text();
-      alert("Erreur cloud : " + text);
+      console.error("Erreur cloud :", text);
+    } else {
+      console.log("Vocabulaire sauvegardé sur le cloud ✅");
     }
   } catch (err) {
     console.error("Erreur saveVocabToCloud :", err);
@@ -475,11 +478,9 @@ async function loadVocabFromCloud(auto = true) {
 
     const cloudData = await res.json();
 
-    // Fusion des catégories existantes
+    // Fusion des catégories existantes (hors hardWords)
     for (const key in cloudData) {
-      if (key !== "hardWords") {
-        vocabulary[key] = cloudData[key];
-      }
+      if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
     // Fusion hardWords sans doublons
@@ -490,6 +491,7 @@ async function loadVocabFromCloud(auto = true) {
 
     loadThemes();
     if (!auto) alert("Vocabulaire chargé !");
+    if (auto) console.log("Synchronisation cloud effectuée ✅");
   } catch (err) {
     console.error(err);
     if (!auto) alert("Impossible de contacter le serveur");
@@ -500,8 +502,8 @@ async function loadVocabFromCloud(auto = true) {
 function addHardWord(word) {
   if (!vocabulary.hardWords.includes(word)) {
     vocabulary.hardWords.push(word);
-    saveVocabToCloud();
-    loadThemes(); // mise à jour UI
+    loadThemes();
+    saveVocabToCloud(); // sauvegarde automatique
   }
 }
 
@@ -510,10 +512,16 @@ function removeHardWord(word) {
   const index = vocabulary.hardWords.indexOf(word);
   if (index > -1) {
     vocabulary.hardWords.splice(index, 1);
-    saveVocabToCloud();
-    loadThemes(); // mise à jour UI
+    loadThemes();
+    saveVocabToCloud(); // sauvegarde automatique
   }
 }
+
+// --- Auto-sync toutes les 10 secondes ---
+setInterval(() => {
+  if (token) loadVocabFromCloud(true);
+}, 10000);
+
 
 // --- Supprimer catégorie ---
 function removeCategory(cat) {
