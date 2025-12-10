@@ -454,25 +454,21 @@ vocabulary.hardWords = vocabulary.hardWords || [];
 async function saveVocabToCloud() {
   if (!token) return;
 
-  const dataToSave = {
-    ...vocabulary,
-    hardWords: vocabulary.hardWords
-  };
-
   try {
     const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataToSave)
+      body: JSON.stringify(vocabulary)
     });
 
     if (!res.ok) console.error(await res.text());
+    else console.log("Vocabulaire sauvegardé sur le cloud ✅");
   } catch (err) {
     console.error(err);
   }
 }
 
-// --- Chargement depuis le Cloud avec fusion ---
+// --- Chargement depuis le Cloud avec remplacement complet ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -482,19 +478,11 @@ async function loadVocabFromCloud(auto = true) {
 
     const cloudData = await res.json();
 
-    // Fusion vocab
-    for (const key in cloudData) {
-      if (key === "hardWords") continue;
-      vocabulary[key] = cloudData[key];
-    }
+    // Remplace entièrement le vocabulaire local par celui du cloud
+    vocabulary = cloudData || {};
+    vocabulary.hardWords = vocabulary.hardWords || [];
 
-    // Fusion hardWords sans doublons
-    vocabulary.hardWords = Array.from(new Set([
-      ...(vocabulary.hardWords || []),
-      ...(cloudData.hardWords || [])
-    ]));
-
-    loadThemes();
+    loadThemes(); // recharge UI
     if (!auto) alert("Vocabulaire chargé !");
   } catch (err) {
     console.error(err);
@@ -512,11 +500,14 @@ function addHardWord(word) {
 
 // --- Supprimer un mot difficile ---
 function removeHardWord(word) {
-  vocabulary.hardWords = vocabulary.hardWords.filter(w => w !== word);
-  saveVocabToCloud(); // sync automatique
+  const index = vocabulary.hardWords.indexOf(word);
+  if (index > -1) {
+    vocabulary.hardWords.splice(index, 1);
+    saveVocabToCloud(); // sync automatique
+  }
 }
 
-// --- Import TXT ---
+// --- Import / Export TXT ---
 function triggerImport() {
   document.getElementById("fileInput").click();
 }
@@ -529,18 +520,12 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
     try {
       const imported = JSON.parse(ev.target.result);
 
-      // Fusion vocab et hardWords
-      for (const key in imported) {
-        if (key === "hardWords") continue;
-        vocabulary[key] = imported[key];
-      }
-      vocabulary.hardWords = Array.from(new Set([
-        ...(vocabulary.hardWords || []),
-        ...(imported.hardWords || [])
-      ]));
+      // Remplace vocab et hardWords
+      vocabulary = { ...imported };
+      vocabulary.hardWords = vocabulary.hardWords || [];
 
       loadThemes();
-      saveVocabToCloud(); // sync automatique après import
+      saveVocabToCloud(); // sync après import
       alert("Vocabulaire importé et synchronisé !");
     } catch {
       alert("Fichier invalide");
@@ -549,7 +534,6 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-// --- Export TXT ---
 function exportTXT() {
   const dataStr = JSON.stringify(vocabulary, null, 2);
   const blob = new Blob([dataStr], { type: "text/plain" });
