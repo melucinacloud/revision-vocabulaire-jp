@@ -424,7 +424,7 @@ document.getElementById("login-btn").onclick = async () => {
     localStorage.setItem("userToken", token);
 
     updateUIAfterLogin(email);
-    loadVocabFromCloud(true);
+    await loadVocabFromCloud(true);
   } catch (err) {
     console.error(err);
     alert("Erreur lors de la connexion");
@@ -450,9 +450,9 @@ function updateUIAfterLogin(email) {
 // --- INITIALISATION ---
 vocabulary.hardWords = vocabulary.hardWords || [];
 
-// --- Sauvegarde sur le Cloud (incluant mots difficiles) ---
+// --- Sauvegarde sur le Cloud ---
 async function saveVocabToCloud() {
-  if (!token) return alert("Connectez-vous d'abord");
+  if (!token) return;
 
   const dataToSave = {
     ...vocabulary,
@@ -466,15 +466,13 @@ async function saveVocabToCloud() {
       body: JSON.stringify(dataToSave)
     });
 
-    if (res.ok) alert("Vocabulaire sauvegardé !");
-    else alert(await res.text());
+    if (!res.ok) console.error(await res.text());
   } catch (err) {
     console.error(err);
-    alert("Impossible de sauvegarder le vocabulaire");
   }
 }
 
-// --- Chargement depuis le Cloud avec fusion hardWords ---
+// --- Chargement depuis le Cloud avec fusion ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -482,18 +480,21 @@ async function loadVocabFromCloud(auto = true) {
     const res = await fetch(`${WORKER_URL}/load?user=${token}`);
     if (!res.ok) return;
 
-    const data = await res.json();
+    const cloudData = await res.json();
 
-    // Fusionne le vocabulaire importé avec l'existant
-    Object.assign(vocabulary, data);
+    // Fusion vocab
+    for (const key in cloudData) {
+      if (key === "hardWords") continue;
+      vocabulary[key] = cloudData[key];
+    }
 
-    // Fusionne hardWords pour ne pas écraser les mots existants
+    // Fusion hardWords sans doublons
     vocabulary.hardWords = Array.from(new Set([
       ...(vocabulary.hardWords || []),
-      ...(data.hardWords || [])
+      ...(cloudData.hardWords || [])
     ]));
 
-    loadThemes(); // recharge l'UI
+    loadThemes();
     if (!auto) alert("Vocabulaire chargé !");
   } catch (err) {
     console.error(err);
@@ -515,7 +516,7 @@ function removeHardWord(word) {
   saveVocabToCloud(); // sync automatique
 }
 
-// --- Import / Export TXT ---
+// --- Import TXT ---
 function triggerImport() {
   document.getElementById("fileInput").click();
 }
@@ -527,10 +528,20 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.onload = (ev) => {
     try {
       const imported = JSON.parse(ev.target.result);
-      Object.assign(vocabulary, imported);
-      vocabulary.hardWords = vocabulary.hardWords || [];
+
+      // Fusion vocab et hardWords
+      for (const key in imported) {
+        if (key === "hardWords") continue;
+        vocabulary[key] = imported[key];
+      }
+      vocabulary.hardWords = Array.from(new Set([
+        ...(vocabulary.hardWords || []),
+        ...(imported.hardWords || [])
+      ]));
+
       loadThemes();
-      alert("Vocabulaire importé !");
+      saveVocabToCloud(); // sync automatique après import
+      alert("Vocabulaire importé et synchronisé !");
     } catch {
       alert("Fichier invalide");
     }
@@ -538,6 +549,7 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
+// --- Export TXT ---
 function exportTXT() {
   const dataStr = JSON.stringify(vocabulary, null, 2);
   const blob = new Blob([dataStr], { type: "text/plain" });
