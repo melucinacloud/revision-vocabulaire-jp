@@ -474,7 +474,7 @@ async function saveVocabToCloud() {
   }
 }
 
-// --- Chargement depuis le Cloud ---
+// --- Chargement depuis le Cloud avec fusion hardWords ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -484,14 +484,16 @@ async function loadVocabFromCloud(auto = true) {
 
     const data = await res.json();
 
-    // Remplace tout le vocabulaire local
+    // Fusionne le vocabulaire importé avec l'existant
     Object.assign(vocabulary, data);
 
-    // Assure que hardWords existe
-    vocabulary.hardWords = vocabulary.hardWords || [];
+    // Fusionne hardWords pour ne pas écraser les mots existants
+    vocabulary.hardWords = Array.from(new Set([
+      ...(vocabulary.hardWords || []),
+      ...(data.hardWords || [])
+    ]));
 
-    loadThemes(); // recharge UI
-
+    loadThemes(); // recharge l'UI
     if (!auto) alert("Vocabulaire chargé !");
   } catch (err) {
     console.error(err);
