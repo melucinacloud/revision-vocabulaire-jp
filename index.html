@@ -221,17 +221,17 @@ footer {
 
   <div class="menu left-menu">
     <!-- Formulaire login -->
-<div id="loginForm">
-      <input id="username" placeholder="Email">
-      <input id="password" type="password" placeholder="Mot de passe">
-      <button onclick="register()">Créer un compte</button>
-      <button onclick="login()">Se connecter</button>
+    <div id="loginForm">
+      <input id="login-email" placeholder="Email">
+      <input id="login-password" type="password" placeholder="Mot de passe">
+      <button id="register-btn">Créer un compte</button>
+      <button id="login-btn">Se connecter</button>
     </div>
-<div id="user-info" style="display:none;">
-  <span id="welcome-user"></span>
-  <button id="logout-btn">Déconnexion</button>
-</div>
 
+    <div id="user-info" style="display:none;">
+      <span id="welcome-user"></span>
+      <button id="logout-btn">Déconnexion</button>
+    </div>
     <h2>Menu</h2>
 
     <div class="section">
@@ -243,10 +243,7 @@ footer {
         <button onclick="openCategoryManager()" style="width:100%">Gérer catégories</button>
       </div>
     </div>
-    <p style="font-size:13px; margin-top:6px;">
-        Pour installer tous les catégories, téléchargez le dernier fichier du vocabulaire 
-        <a href="https://drive.google.com/drive/folders/1q1ORDylWfZvPW_TAvHTxId33sFPWuSwV?usp=sharing" target="_blank">ici</a> et importez-le.
-      </p>
+
 
 
     <div class="section">
@@ -294,21 +291,14 @@ footer {
         <button onclick="triggerImport()">Importer</button>
         <button onclick="exportTXT()">Exporter</button>
         <button onclick="downloadTemplateTXT()">Modèle TXT</button>
-<button id="save-btn">Sauvegarder sur le Cloud</button>
-<button id="load-btn">Charger depuis le Cloud</button>
+                <p style="font-size:13px; margin-top:6px;">
+        Pour installer tous les catégories, téléchargez le dernier fichier du vocabulaire 
+        <a href="https://drive.google.com/drive/folders/1q1ORDylWfZvPW_TAvHTxId33sFPWuSwV?usp=sharing" target="_blank">ici</a> et importez-le.
+      </p>
+
+<button onclick="saveVocabToCloud()">Sauvegarder sur le Cloud</button>
+        <button onclick="loadVocabFromCloud(false)">Charger depuis le Cloud</button>
       </div>
-      <p style="
-  margin-top:10px; 
-  padding:10px; 
-  background:#ffe6f0; 
-  border-left:4px solid #d14b7a; 
-  border-radius:6px;
-  font-size:0.9rem;
-  color:#b03a63;
-">
-  ⚠️ <b>Important :</b> Si vous supprimez les données de votre navigateur (cache, cookies, stockage), 
-  votre vocabulaire sera perdu. Pensez à l’exporter régulièrement !
-</p>
 
 <div id="addWordFormContainer" style="position:relative;"></div>
 
@@ -389,28 +379,14 @@ let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
-let token = localStorage.getItem("userToken");
-
-// --- UTILS ---
-function updateUIAfterLogin(email) {
-  document.getElementById("loginForm").style.display = "none";
-  document.getElementById("user-info").style.display = "block";
-  document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
-}
-
-function logout() {
-  token = null;
-  localStorage.removeItem("userToken");
-  document.getElementById("loginForm").style.display = "block";
-  document.getElementById("user-info").style.display = "none";
-}
+let token = localStorage.getItem("userToken"); // token base64(email)
 
 // --- REGISTER ---
-async function register() {
-  const email = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
+document.getElementById("register-btn").onclick = async () => {
+  const email = document.getElementById("login-email").value;
+  const pass = document.getElementById("login-password").value;
 
-  if (!email || !pass) return alert("Veuillez remplir tous les champs");
+  if (!email || !pass) return alert("Email et mot de passe requis");
 
   const res = await fetch(`${WORKER_URL}/register`, {
     method: "POST",
@@ -418,19 +394,16 @@ async function register() {
     body: JSON.stringify({ email, pass })
   });
 
-  if (res.ok) {
-    alert("Compte créé. Vous pouvez maintenant vous connecter.");
-  } else {
-    alert(await res.text());
-  }
-}
+  if (res.ok) alert("Compte créé. Vous pouvez maintenant vous connecter.");
+  else alert(await res.text());
+};
 
 // --- LOGIN ---
-async function login() {
-  const email = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
+document.getElementById("login-btn").onclick = async () => {
+  const email = document.getElementById("login-email").value;
+  const pass = document.getElementById("login-password").value;
 
-  if (!email || !pass) return alert("Veuillez remplir tous les champs");
+  if (!email || !pass) return alert("Email et mot de passe requis");
 
   const res = await fetch(`${WORKER_URL}/login`, {
     method: "POST",
@@ -445,10 +418,26 @@ async function login() {
   localStorage.setItem("userToken", token);
 
   updateUIAfterLogin(email);
-  loadVocabFromCloud();
+  loadVocabFromCloud(true);
+};
+
+// --- LOGOUT ---
+function logout() {
+  token = null;
+  localStorage.removeItem("userToken");
+  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("user-info").style.display = "none";
 }
 
-// --- SAVE / LOAD VOCAB ---
+// --- UI après login ---
+function updateUIAfterLogin(email) {
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("user-info").style.display = "block";
+  document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
+  document.getElementById("logout-btn").onclick = logout;
+}
+
+// --- SAVE VOCAB ---
 async function saveVocabToCloud() {
   if (!token) return alert("Connectez-vous d'abord");
 
@@ -463,10 +452,11 @@ async function saveVocabToCloud() {
     else alert(await res.text());
   } catch (err) {
     console.error(err);
-    alert("Erreur lors de la sauvegarde");
+    alert("Impossible de contacter le serveur");
   }
 }
 
+// --- LOAD VOCAB ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -476,7 +466,7 @@ async function loadVocabFromCloud(auto = true) {
 
     const data = await res.json();
     Object.assign(vocabulary, data);
-    loadThemes(); // recharge le site
+    loadThemes();
 
     if (!auto) alert("Vocabulaire chargé !");
   } catch (err) {
@@ -485,21 +475,15 @@ async function loadVocabFromCloud(auto = true) {
   }
 }
 
-// --- EVENT LISTENERS ---
-document.getElementById("register-btn").onclick = register;
-document.getElementById("login-btn").onclick = login;
-document.getElementById("logout-btn").onclick = logout;
-document.getElementById("save-btn")?.addEventListener("click", saveVocabToCloud);
-document.getElementById("load-btn")?.addEventListener("click", () => loadVocabFromCloud(false));
-
-// --- AUTO LOGIN ---
+// --- Auto login au refresh ---
 window.addEventListener("load", () => {
   if (token) {
-    const email = atob(token);
+    const email = atob(token); // decode simple token
     updateUIAfterLogin(email);
     loadVocabFromCloud(true);
   }
 });
+
 
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
