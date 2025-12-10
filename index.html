@@ -220,53 +220,69 @@ footer {
 <div class="container">
 
   <div class="menu left-menu">
-    <!-- Formulaire login -->
-    <div id="loginForm">
-      <input id="login-email" placeholder="Email">
-      <input id="login-password" type="password" placeholder="Mot de passe">
-      <button id="register-btn">Créer un compte</button>
-      <button id="login-btn">Se connecter</button>
-    </div>
+  <!-- Formulaire login -->
+  <div id="loginForm">
+    <input id="login-email" placeholder="Email">
+    <input id="login-password" type="password" placeholder="Mot de passe">
+    <button id="register-btn">Créer un compte</button>
+    <button id="login-btn">Se connecter</button>
+  </div>
 
-    <div id="user-info" style="display:none;">
-      <span id="welcome-user"></span>
-      <button id="logout-btn">Déconnexion</button>
-    </div>
-    <h2>Menu</h2>
+  <!-- Info utilisateur après login -->
+  <div id="user-info" style="display:none;">
+    <span id="welcome-user"></span>
+    <button id="logout-btn">Déconnexion</button>
+  </div>
 
-    <div class="section">
-      <div class="mlabel">Catégories</div>
-      <select id="theme" onchange="onThemeChange()">
-        <option value="all">Tous</option>
-      </select>
-      <div style="margin-top:8px">
-        <button onclick="openCategoryManager()" style="width:100%">Gérer catégories</button>
-      </div>
-    </div>
+  <h2>Menu</h2>
 
-<div id="cloud-status" style="position:fixed; top:10px; right:10px; 
-     background:#4CAF50; color:white; padding:5px 10px; border-radius:5px; 
-     display:none; z-index:1000;"></div>
-
-    <div class="section">
-      <div class="mlabel">Mode</div>
-      <div class="row">
-        <label><input type="radio" name="mode" value="jf" checked> J → F</label>
-        <label><input type="radio" name="mode" value="fj"> F → J</label>
-        <label><input type="radio" name="mode" value="mix"> Mixte</label>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="mlabel">Révision</div>
-      <div class="row">
-        <button onclick="startNewRandomList()">Nouvelle liste aléatoire</button>
-        <button onclick="startDictation()">Dictée</button>
-        <button onclick="startHardRevision()">Révision mots difficiles</button>
-        <button onclick="openHardWords()">Voir mots difficiles</button>
-      </div>
+  <!-- Catégories -->
+  <div class="section">
+    <div class="mlabel">Catégories</div>
+    <select id="theme" onchange="onThemeChange()">
+      <option value="all">Tous</option>
+    </select>
+    <div style="margin-top:8px">
+      <button onclick="openCategoryManager()" style="width:100%">Gérer catégories</button>
     </div>
   </div>
+
+  <!-- Barre statut cloud -->
+  <div id="cloud-status" style="position:fixed; top:10px; right:10px; 
+       background:#4CAF50; color:white; padding:5px 10px; border-radius:5px; 
+       display:none; z-index:1000;"></div>
+
+  <!-- Mode -->
+  <div class="section">
+    <div class="mlabel">Mode</div>
+    <div class="row">
+      <label><input type="radio" name="mode" value="jf" checked> J → F</label>
+      <label><input type="radio" name="mode" value="fj"> F → J</label>
+      <label><input type="radio" name="mode" value="mix"> Mixte</label>
+    </div>
+  </div>
+
+  <!-- Révision -->
+  <div class="section">
+    <div class="mlabel">Révision</div>
+    <div class="row">
+      <button onclick="startNewRandomList()">Nouvelle liste aléatoire</button>
+      <button onclick="startDictation()">Dictée</button>
+      <button onclick="startHardRevision()">Révision mots difficiles</button>
+      <button onclick="openHardWords()">Voir mots difficiles</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fenêtre mots difficiles -->
+<div id="hardPage" style="display:none; position:fixed; top:50%; left:50%; 
+     transform:translate(-50%, -50%); background:white; padding:20px; 
+     border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:10000;">
+</div>
+
+<!-- Input invisible pour import -->
+<input type="file" id="fileInput" style="display:none">
+
 
   <div class="card">
     <div class="fleur"></div>
@@ -394,6 +410,18 @@ function showCloudStatus(msg, success = true) {
   setTimeout(() => { div.style.display = "none"; }, 2000);
 }
 
+// --- Affichage mots difficiles ---
+function updateHardWordsUI() {
+  const container = document.getElementById("hard-words-list");
+  if (!container) return;
+  container.innerHTML = "";
+  vocabulary.hardWords.forEach(word => {
+    const p = document.createElement("p");
+    p.textContent = word;
+    container.appendChild(p);
+  });
+}
+
 // --- REGISTER ---
 document.getElementById("register-btn").onclick = async () => {
   const email = document.getElementById("login-email").value.trim();
@@ -415,15 +443,6 @@ document.getElementById("register-btn").onclick = async () => {
 };
 
 // --- LOGIN ---
-let autoSyncInterval = null;
-
-function startAutoSync() {
-  if (autoSyncInterval) clearInterval(autoSyncInterval);
-  autoSyncInterval = setInterval(() => {
-    if (token) loadVocabFromCloud(true); // auto-sync silencieux
-  }, 10000); // toutes les 10s
-}
-
 document.getElementById("login-btn").onclick = async () => {
   const email = document.getElementById("login-email").value.trim();
   const pass = document.getElementById("login-password").value;
@@ -443,7 +462,6 @@ document.getElementById("login-btn").onclick = async () => {
 
     updateUIAfterLogin(email);
     await loadVocabFromCloud(true); // load silencieux au login
-    startAutoSync();
   } catch (err) {
     console.error(err);
     alert("Erreur lors de la connexion");
@@ -456,7 +474,6 @@ function logout() {
   localStorage.removeItem("userToken");
   document.getElementById("loginForm").style.display = "block";
   document.getElementById("user-info").style.display = "none";
-  if (autoSyncInterval) clearInterval(autoSyncInterval);
 }
 
 // --- UI après login ---
@@ -465,6 +482,7 @@ function updateUIAfterLogin(email) {
   document.getElementById("user-info").style.display = "block";
   document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
   document.getElementById("logout-btn").onclick = logout;
+  updateHardWordsUI();
 }
 
 // --- SAVE CLOUD ---
@@ -492,18 +510,25 @@ async function loadVocabFromCloud(auto = true) {
 
     const cloudData = await res.json();
 
+    // Remplacement complet des catégories (pour supprimer les anciennes)
+    for (const key in vocabulary) {
+      if (key !== "hardWords") delete vocabulary[key];
+    }
     for (const key in cloudData) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
+
+    // Fusion des mots difficiles sans doublons
     vocabulary.hardWords = Array.from(new Set([
       ...(vocabulary.hardWords || []),
       ...(cloudData.hardWords || [])
     ]));
 
     loadThemes();
+    updateHardWordsUI();
 
     if (!auto) alert("Vocabulaire chargé !");
-    if (auto) showCloudStatus("Synchronisation cloud ✅");
+    if (auto) console.log("Synchronisation cloud effectuée ✅");
   } catch {
     if (!auto) alert("Impossible de contacter le serveur");
   }
@@ -514,6 +539,7 @@ function addHardWord(word) {
   if (!vocabulary.hardWords.includes(word)) {
     vocabulary.hardWords.push(word);
     loadThemes();
+    updateHardWordsUI();
     saveVocabToCloud();
   }
 }
@@ -522,6 +548,7 @@ function removeHardWord(word) {
   if (i > -1) {
     vocabulary.hardWords.splice(i, 1);
     loadThemes();
+    updateHardWordsUI();
     saveVocabToCloud();
   }
 }
@@ -544,14 +571,17 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.onload = (ev) => {
     try {
       const imported = JSON.parse(ev.target.result);
+      // Remplacer catégories
       for (const key in imported) {
         if (key !== "hardWords") vocabulary[key] = imported[key];
       }
+      // Fusion mots difficiles
       vocabulary.hardWords = Array.from(new Set([
         ...(vocabulary.hardWords || []),
         ...(imported.hardWords || [])
       ]));
       loadThemes();
+      updateHardWordsUI();
       saveVocabToCloud();
       showCloudStatus("Vocabulaire importé ✅");
     } catch {
@@ -576,13 +606,13 @@ window.addEventListener("load", async () => {
       const email = atob(token);
       updateUIAfterLogin(email);
       await loadVocabFromCloud(true); // auto-sync silencieux
-      startAutoSync();
     } catch {
       token = null;
       localStorage.removeItem("userToken");
     }
   }
 });
+
 
 /* ---------- String normalization & category fusion ---------- */
 function normalizeString(s){
