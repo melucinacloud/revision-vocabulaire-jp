@@ -395,10 +395,8 @@ if(!vocabulary){
 }
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
-
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
 let token = localStorage.getItem("userToken");
-vocabulary.hardWords = vocabulary.hardWords || [];
 
 // --- Feedback visuel ---
 function showCloudStatus(msg, success = true) {
@@ -415,9 +413,9 @@ function updateHardWordsUI() {
   const container = document.getElementById("hard-words-list");
   if (!container) return;
   container.innerHTML = "";
-  vocabulary.hardWords.forEach(word => {
+  difficult.forEach(word => {
     const p = document.createElement("p");
-    p.textContent = word;
+    p.textContent = `${word.jp} → ${word.fr} (${word.cat||'?'})`;
     container.appendChild(p);
   });
 }
@@ -519,10 +517,11 @@ async function loadVocabFromCloud(auto = true) {
     }
 
     // Fusion des mots difficiles sans doublons
-    vocabulary.hardWords = Array.from(new Set([
-      ...(vocabulary.hardWords || []),
+    difficult = Array.from(new Set([
+      ...(difficult || []),
       ...(cloudData.hardWords || [])
     ]));
+    vocabulary.hardWords = difficult.slice();
 
     loadThemes();
     updateHardWordsUI();
@@ -534,35 +533,46 @@ async function loadVocabFromCloud(auto = true) {
   }
 }
 
-// --- Ajouter / Supprimer mots difficiles ---
+/* ---------- Ajouter / Supprimer mots difficiles ---------- */
+// Ajouter un mot difficile
 function addHardWord(word) {
-  if (!vocabulary.hardWords.includes(word)) {
+  if (!vocabulary.hardWords.some(w => w.jp === word.jp && w.fr === word.fr)) {
     vocabulary.hardWords.push(word);
+    difficult.push({ jp: word.jp, fr: word.fr, cat: word.cat || 'autres' });
     loadThemes();
     updateHardWordsUI();
-    saveVocabToCloud();
-  }
-}
-function removeHardWord(word) {
-  const i = vocabulary.hardWords.indexOf(word);
-  if (i > -1) {
-    vocabulary.hardWords.splice(i, 1);
-    loadThemes();
-    updateHardWordsUI();
+    saveVocabToStorage();
+    saveHardToStorage();
     saveVocabToCloud();
   }
 }
 
-// --- Supprimer catégorie ---
+// Supprimer un mot difficile
+function removeHardWord(word) {
+  const i = vocabulary.hardWords.findIndex(w => w.jp === word.jp && w.fr === word.fr);
+  if (i > -1) {
+    vocabulary.hardWords.splice(i, 1);
+    const idx = difficult.findIndex(w => w.jp === word.jp && w.fr === word.fr);
+    if (idx > -1) difficult.splice(idx, 1);
+
+    loadThemes();
+    updateHardWordsUI();
+    saveVocabToStorage();
+    saveHardToStorage();
+    saveVocabToCloud();
+  }
+}
+
+/* ---------- Supprimer catégorie ----------
 function removeCategory(cat) {
   if (vocabulary[cat]) {
     delete vocabulary[cat];
     loadThemes();
     saveVocabToCloud();
   }
-}
+}*/
 
-// --- Import / Export ---
+/* ---------- Import / Export ---------- */
 function triggerImport() { document.getElementById("fileInput").click(); }
 document.getElementById("fileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
@@ -571,17 +581,20 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   reader.onload = (ev) => {
     try {
       const imported = JSON.parse(ev.target.result);
-      // Remplacer catégories
       for (const key in imported) {
         if (key !== "hardWords") vocabulary[key] = imported[key];
       }
       // Fusion mots difficiles
-      vocabulary.hardWords = Array.from(new Set([
-        ...(vocabulary.hardWords || []),
+      difficult = Array.from(new Set([
+        ...(difficult || []),
         ...(imported.hardWords || [])
       ]));
+      vocabulary.hardWords = difficult.slice();
+
       loadThemes();
       updateHardWordsUI();
+      saveVocabToStorage();
+      saveHardToStorage();
       saveVocabToCloud();
       showCloudStatus("Vocabulaire importé ✅");
     } catch {
@@ -605,7 +618,7 @@ window.addEventListener("load", async () => {
     try {
       const email = atob(token);
       updateUIAfterLogin(email);
-      await loadVocabFromCloud(true); // auto-sync silencieux
+      await loadVocabFromCloud(true);
     } catch {
       token = null;
       localStorage.removeItem("userToken");
@@ -613,120 +626,12 @@ window.addEventListener("load", async () => {
   }
 });
 
-
-/* ---------- String normalization & category fusion ---------- */
-function normalizeString(s){
-  if(!s) return '';
-  return s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-
-// Levenshtein distance
-function levenshtein(a, b) {
-  if(a === b) return 0;
-  if(a.length === 0) return b.length;
-  if(b.length === 0) return a.length;
-  const v0 = new Array(b.length + 1);
-  const v1 = new Array(b.length + 1);
-  for (let i = 0; i <= b.length; i++) v0[i] = i;
-  for (let i = 0; i < a.length; i++) {
-    v1[0] = i + 1;
-    for (let j = 0; j < b.length; j++) {
-      const cost = a[i] === b[j] ? 0 : 1;
-      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
-    }
-    for (let j = 0; j <= b.length; j++) v0[j] = v1[j];
-  }
-  return v1[b.length];
-}
-
-function findClosestExistingCategory(catNormalized){
-  let best = null;
-  let bestDist = Infinity;
-  for (const existing of Object.keys(vocabulary)){
-    const exNorm = normalizeString(existing);
-    if(exNorm === catNormalized) return existing;
-    const d = levenshtein(catNormalized, exNorm);
-    if(d < bestDist){ bestDist = d; best = existing; }
-  }
-  if(bestDist <= 2) return best;
-  return null;
-}
-
-function normalizeCategory(cat){
-  if(!cat) return 'autres';
-  let c = normalizeString(cat);
-  const corrections = {'nouriture':'nourriture','objet':'objets','lieu':'lieux','endroit':'endroits','animal':'animaux'};
-  if(c in corrections) c = corrections[c];
-  if(Object.keys(vocabulary).length > 0){
-    const closest = findClosestExistingCategory(c);
-    if(closest) return closest;
-  }
-  return c || 'autres';
-}
-
-// Normalize a word + category triplet (for add/import)
-function normalizeWordAndCategory(jp, fr, cat){
-  jp = (jp||'').trim();
-  fr = (fr||'').trim();
-  cat = (cat||'autres').trim();
-  // normalize category using the smarter function
-  const catNorm = normalizeCategory(cat);
-  return {jp, fr, cat: catNorm};
-}
-
-// Merge similar categories already stored (call once at init)
-function mergeSimilarCategories(){
-  const keys = Object.keys(vocabulary);
-  // map normalized -> canonical name
-  const mapping = {};
-  for(const k of keys){
-    const kn = normalizeString(k);
-    if(mapping[kn]){
-      const target = mapping[kn];
-      vocabulary[target] = (vocabulary[target] || []).concat(vocabulary[k]);
-      delete vocabulary[k];
-    } else {
-      const closest = findClosestExistingCategory(kn);
-      if(closest && normalizeString(closest) !== kn){
-        vocabulary[closest] = (vocabulary[closest] || []).concat(vocabulary[k]);
-        delete vocabulary[k];
-        mapping[kn] = closest;
-      } else {
-        mapping[kn] = k;
-      }
-    }
-  }
-  // deduplicate words inside categories
-  for(const cat in vocabulary){
-    const seen = new Set();
-    const unique = [];
-    for(const w of vocabulary[cat]){
-      const key = (w.jp||'') + '|' + (w.fr||'');
-      if(!seen.has(key)){ seen.add(key); unique.push(w); }
-    }
-    vocabulary[cat] = unique;
-  }
-  saveVocabToStorage();
-}
-
-/* run merge at startup to clean old data */
-mergeSimilarCategories();
-
-/* ---------- Queue ---------- */
-let currentQueue = [];
-let queueIndex = 0;
-let current = {};
-
-/* ---------- Helpers ---------- */
-function saveVocabToStorage(){ localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary)); }
-function saveHardToStorage(){ localStorage.setItem(STORAGE_HARD, JSON.stringify(difficult)); }
-
 /* ---------- Themes ---------- */
 function loadThemes(){
   const sel = document.getElementById('theme');
   const prev = sel.value || 'all';
   sel.innerHTML = '<option value="all">Tous</option>';
-  const cats = Object.keys(vocabulary).sort();
+  const cats = Object.keys(vocabulary).filter(k=>k!=='hardWords').sort();
   cats.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c;
@@ -745,7 +650,11 @@ document.querySelectorAll('input[name="mode"]').forEach(radio => {
   radio.addEventListener('change', () => { updateDisplayedFromQueue(); });
 });
 
-/* ---------- Queue helpers ---------- */
+/* ---------- Queue ---------- */
+let currentQueue = [];
+let queueIndex = 0;
+let current = {};
+
 function shuffle(array){ for(let i = array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];} return array; }
 
 function buildActiveListExcludeDifficult(){
@@ -777,41 +686,7 @@ function nextFromQueue(){ queueIndex++; if(queueIndex>=currentQueue.length){ doc
 function updateDisplayedFromQueue(){ if(currentQueue && queueIndex<currentQueue.length){ showQueueItem(queueIndex);} else {startNewRandomList();} }
 function showAnswer(){ document.getElementById('answer').style.display='block'; }
 
-/* ---------- Find category for a word ---------- */
-function findWordCategory(jp, fr){
-  for(const cat in vocabulary){
-    if(vocabulary[cat].some(w => w.jp === jp && w.fr === fr)) return cat;
-  }
-  return 'autres';
-}
-
-/* ---------- Je ne connais pas / Ajouté ---------- */
-function toggleHardBtn(){
-  if(!current.obj) return;
-  const btn=document.getElementById('hardBtn');
-  const jp = current.obj.jp;
-  const fr = current.obj.fr;
-  const existing = difficult.find(x => x.jp === jp && x.fr === fr);
-  if(existing){
-    // already in difficult -> give quick feedback
-    btn.textContent = 'Ajouté';
-    setTimeout(()=>{ btn.textContent='⭐ Difficile'; },1500);
-    return;
-  }
-  // find category to store with the difficult word
-  const cat = findWordCategory(jp, fr);
-  const toSave = { jp: jp, fr: fr, cat: cat };
-  difficult.push(toSave);
-  saveHardToStorage();
-  btn.textContent='Ajouté';
-  setTimeout(()=>{ btn.textContent='⭐ Difficile'; },1500);
-  // remove this word from currentQueue (so it won't appear again in this run)
-  const key = jp + '|' + fr;
-  currentQueue = currentQueue.filter(w => !(w.jp + '|' + w.fr === key));
-  if(queueIndex >= currentQueue.length) queueIndex = Math.max(0, currentQueue.length - 1);
-}
-
-/* ---------- Hard words modal & removal (multi) ---------- */
+/* ---------- Hard words modal ---------- */
 function openHardWords(){
   const el=document.getElementById('hardPage'); el.style.display='block';
   if(!difficult.length){ el.innerHTML=`<h3>Mots difficiles</h3><p>Pas encore de mots.</p><div style="margin-top:12px"><button onclick="closeHardWords()">Fermer</button></div>`; return;}
@@ -839,19 +714,21 @@ function removeSelectedHard(){
     const w = difficult[idx];
     const cat = w.cat || 'autres';
     if(!vocabulary[cat]) vocabulary[cat] = [];
-    // avoid duplicates when reinserting
     if(!vocabulary[cat].some(x=>x.jp===w.jp && x.fr===w.fr)){
       vocabulary[cat].push({jp:w.jp, fr:w.fr, lvl:1});
     }
     difficult.splice(idx,1);
   }
+  vocabulary.hardWords = difficult.slice();
   saveVocabToStorage();
   saveHardToStorage();
+  saveVocabToCloud();
   loadThemes();
   openHardWords();
 }
 
 function downloadHard(){ const text = difficult.map(w=>`${w.jp}\t${w.fr}\t${w.cat||'autres'}`).join('\n'); const blob = new Blob([text], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mots_difficiles.txt'; a.click(); }
+
 
 /* ---------- Dictée (50 mots), voix auto, correction visible) ---------- */
 function startDictation(){
