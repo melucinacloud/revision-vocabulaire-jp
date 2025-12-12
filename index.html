@@ -526,12 +526,14 @@ async function saveVocabToCloud() {
 
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
+
   try {
     const res = await fetch(`${WORKER_URL}/load?user=${token}`);
     if (!res.ok) return;
 
     const cloudData = await res.json();
 
+    // On remplace le vocabulaire existant (hors mots difficiles)
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
@@ -539,10 +541,15 @@ async function loadVocabFromCloud(auto = true) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    difficult = Array.from(new Set([
-      ...(difficult || []),
-      ...(cloudData.hardWords || [])
-    ]));
+    // --- Merge des mots difficiles sans doublons ---
+    const keySet = new Set(difficult.map(w => w.jp + '|' + w.fr));
+    (cloudData.hardWords || []).forEach(w => {
+      const key = w.jp + '|' + w.fr;
+      if (!keySet.has(key)) {
+        difficult.push(w);
+        keySet.add(key);
+      }
+    });
     vocabulary.hardWords = difficult.slice();
 
     loadThemes();
@@ -550,10 +557,12 @@ async function loadVocabFromCloud(auto = true) {
 
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
+
   } catch {
     if (!auto) alert("Impossible de contacter le serveur");
   }
 }
+
 
 function saveVocabToStorage() {
   localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary));
