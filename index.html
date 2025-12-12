@@ -428,8 +428,9 @@ if(!vocabulary){
 let difficult = JSON.parse(localStorage.getItem(STORAGE_HARD) || '[]');
 
 const WORKER_URL = "https://revision-api.nihongotips.workers.dev";
-let token = localStorage.getItem("userToken");
+let token = localStorage.getItem("userToken") || null;
 
+// --- Feedback visuel ---
 function showCloudStatus(msg, success = true) {
   const div = document.getElementById("cloud-status");
   if (!div) return;
@@ -439,17 +440,19 @@ function showCloudStatus(msg, success = true) {
   setTimeout(() => { div.style.display = "none"; }, 2000);
 }
 
+// --- Mise à jour affichage mots difficiles ---
 function updateHardWordsUI() {
   const container = document.getElementById("hard-words-list");
   if (!container) return;
   container.innerHTML = "";
   difficult.forEach(word => {
     const p = document.createElement("p");
-    p.textContent = `${word.jp} → ${word.fr} (${word.cat||'?'})`;
+    p.textContent = `${word.jp} → ${word.fr} (${word.cat || '?'})`;
     container.appendChild(p);
   });
 }
 
+// --- Inscription ---
 document.getElementById("register-btn").onclick = async () => {
   const email = document.getElementById("login-email").value.trim();
   const pass = document.getElementById("login-password").value;
@@ -469,6 +472,7 @@ document.getElementById("register-btn").onclick = async () => {
   }
 };
 
+// --- Connexion ---
 document.getElementById("login-btn").onclick = async () => {
   const email = document.getElementById("login-email").value.trim();
   const pass = document.getElementById("login-password").value;
@@ -487,28 +491,37 @@ document.getElementById("login-btn").onclick = async () => {
     localStorage.setItem("userToken", token);
 
     updateUIAfterLogin(email);
-    await loadVocabFromCloud(true);
+
+    try {
+      await loadVocabFromCloud(true); // synchro immédiate
+    } catch(err) {
+      console.error("Erreur synchronisation cloud :", err);
+      showCloudStatus("Erreur synchronisation cloud", false);
+    }
   } catch (err) {
     console.error(err);
     alert("Erreur lors de la connexion");
   }
 };
 
+// --- Déconnexion ---
 function logout() {
   token = null;
   localStorage.removeItem("userToken");
-  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("loginForm").style.display = "flex";
   document.getElementById("user-info").style.display = "none";
 }
 
+// --- Mise à jour UI après login ---
 function updateUIAfterLogin(email) {
   document.getElementById("loginForm").style.display = "none";
-  document.getElementById("user-info").style.display = "block";
+  document.getElementById("user-info").style.display = "flex";
   document.getElementById("welcome-user").innerText = `Bonjour ${email}`;
   document.getElementById("logout-btn").onclick = logout;
   updateHardWordsUI();
 }
 
+// --- Sauvegarde vocabulaire sur le cloud ---
 async function saveVocabToCloud() {
   if (!token) return showCloudStatus("Pas connecté", false);
   try {
@@ -524,6 +537,7 @@ async function saveVocabToCloud() {
   }
 }
 
+// --- Chargement vocabulaire depuis le cloud ---
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
 
@@ -533,23 +547,27 @@ async function loadVocabFromCloud(auto = true) {
 
     const cloudData = await res.json();
 
-    // On remplace le vocabulaire existant (hors mots difficiles)
+    // On garde seulement les clés existantes
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
+
+    // On merge le vocabulaire cloud avec le local
     for (const key in cloudData) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    // --- Merge des mots difficiles sans doublons ---
-    const keySet = new Set(difficult.map(w => w.jp + '|' + w.fr));
-    (cloudData.hardWords || []).forEach(w => {
-      const key = w.jp + '|' + w.fr;
-      if (!keySet.has(key)) {
-        difficult.push(w);
-        keySet.add(key);
-      }
+    // Merge les mots difficiles sans doublons
+    const allHardWords = [
+      ...(difficult || []),
+      ...(cloudData.hardWords || [])
+    ];
+    const map = new Map();
+    allHardWords.forEach(w => {
+      const k = w.jp + '|' + w.fr;
+      if (!map.has(k)) map.set(k, w);
     });
+    difficult = Array.from(map.values());
     vocabulary.hardWords = difficult.slice();
 
     loadThemes();
@@ -557,20 +575,32 @@ async function loadVocabFromCloud(auto = true) {
 
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
-
-  } catch {
+  } catch(err) {
+    console.error(err);
     if (!auto) alert("Impossible de contacter le serveur");
   }
 }
 
-
+// --- Sauvegarde locale ---
 function saveVocabToStorage() {
   localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary));
 }
-
 function saveHardToStorage() {
   localStorage.setItem(STORAGE_HARD, JSON.stringify(difficult));
 }
+
+// --- Ajout d'un mot difficile (synchro immédiate) ---
+function addHardWord(word) {
+  const key = word.jp + '|' + word.fr;
+  if (!difficult.some(w => w.jp + '|' + w.fr === key)) {
+    difficult.push(word);
+    vocabulary.hardWords = difficult.slice();
+    updateHardWordsUI();
+    saveHardToStorage();
+    saveVocabToCloud();
+  }
+}
+
 
 function normalizeString(s){
   if(!s) return '';
