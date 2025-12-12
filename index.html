@@ -16,8 +16,8 @@
 .dark{
   --bg: linear-gradient(180deg,#14121a,#16121f);
   --card-bg: rgba(28,24,36,0.95);
-  --menu-bg: linear-gradient(180deg,#2c213f,#241b33);
-  --text:#000000;
+  --menu-bg: linear-gradient(180deg,#2c213f,#332747);
+  --text:#e6e6e6;
   --accent:#d179aa;
 }
 
@@ -438,19 +438,22 @@ function updateHardWordsUI() {
   if (!container) return;
 
   container.innerHTML = "";
+
   const map = new Map();
   difficult.forEach(word => {
     const key = word.jp + '|' + word.fr;
     if (!map.has(key)) map.set(key, word);
   });
   difficult = Array.from(map.values());
-  vocabulary.hardWords = difficult.slice();
 
   difficult.forEach(word => {
     const p = document.createElement("p");
     p.textContent = `${word.jp} → ${word.fr} (${word.cat || '?'})`;
     container.appendChild(p);
   });
+
+  saveHardToStorage();
+  saveVocabToCloud();
 }
 
 // ----------------- Ajout / Suppression mots difficiles -----------------
@@ -469,11 +472,30 @@ function addHardWord(word) {
 
 function removeHardWord(word) {
   const key = word.jp + '|' + word.fr;
+
+  // 1️⃣ Supprimer le mot de toutes les catégories
+  for (const cat in vocabulary) {
+    if (Array.isArray(vocabulary[cat])) {
+      vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
+    }
+  }
+
+  // 2️⃣ Supprimer le mot de la liste des mots difficiles
   difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
   vocabulary.hardWords = difficult.slice();
+
+  // 3️⃣ Sauvegarder localement
   saveHardToStorage();
-  saveVocabToCloud().then(() => updateHardWordsUI());
+  saveVocabToStorage();
+
+  // 4️⃣ Sauvegarder sur le cloud puis mettre à jour l'UI
+  saveVocabToCloud().then(() => {
+    updateHardWordsUI(); // met à jour la liste "mots difficiles"
+    loadThemes();        // met à jour la gestion des catégories
+  });
 }
+
+
 
 // ----------------- Connexion / Inscription -----------------
 async function handleRegister() {
@@ -1269,7 +1291,10 @@ function openCategoryManager(){
   const el=document.getElementById('categoryManager'); 
   el.style.display='block';
   let html='<h3>Gestion catégories</h3>';
-  const cats=Object.keys(vocabulary).sort();
+  // Filtrer hardWords pour ne pas l'afficher
+  const cats = Object.keys(vocabulary)
+                     .filter(c => c !== 'hardWords')
+                     .sort();
   cats.forEach(c=>{
     html+=`<div class="cat-item" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.1)">
       <label style="flex:1;display:flex;gap:6px;align-items:center">
@@ -1277,8 +1302,7 @@ function openCategoryManager(){
       </label>
       <div style="display:flex;gap:6px">
         <button class="btn-view" onclick="viewCategory('${c}')">Voir mots</button>
-<button class="btn-rename" onclick="renameCategoryPrompt('${c}')">Renommer</button>
-
+        <button class="btn-rename" onclick="renameCategoryPrompt('${c}')">Renommer</button>
       </div>
     </div>`;
   });
@@ -1286,12 +1310,13 @@ function openCategoryManager(){
   // Conteneur fixe en bas
   html+=`<div style="position:sticky;bottom:0;background:#fff;padding:8px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(0,0,0,0.1)">
     <button class="btn-rose" onclick="closeCategoryManager()" style="padding:8px;border-radius:8px;cursor:pointer">Fermer</button>
-     <button class="btn-rose" onclick="exportSelectedCats()" style="padding:8px;border-radius:8px;cursor:pointer">Exporter la sélection</button>
+    <button class="btn-rose" onclick="exportSelectedCats()" style="padding:8px;border-radius:8px;cursor:pointer">Exporter la sélection</button>
     <button onclick="removeSelectedCats()" style="background:#ff6b6b;color:white;padding:8px;border-radius:8px;border:none;cursor:pointer">Supprimer sélection</button>
   </div>`;
 
   el.innerHTML=html;
 }
+
 
 // Fermer le gestionnaire
 function closeCategoryManager(){ 
