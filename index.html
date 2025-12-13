@@ -474,11 +474,12 @@ function addHardWord(word) {
     difficult.push(word);
     vocabulary.hardWords = difficult.slice();
     updateHardWordsUI();
-    saveAllChangesDebounced();
+    saveAllChanges(); // sauvegarde automatique
   } else {
     updateHardWordsUI();
   }
 }
+
 
 // Supprime un mot difficile et déclenche sauvegarde différée
 function removeHardWord(word) {
@@ -498,11 +499,10 @@ function removeHardWord(word) {
     normalizeString(w.jp) + '|' + normalizeString(w.fr) !== key
   );
 
-  vocabulary.hardWords = difficult.slice();
-
-  updateHardWordsUI();
-  loadThemes();
-  saveAllChangesDebounced();
+vocabulary.hardWords = difficult.slice();
+updateHardWordsUI();   // met à jour la liste visible
+loadThemes();          // met à jour le menu déroulant
+saveAllChangesDebounced(); // sauvegarde tout
 }
 
 // ----------------- Connexion / Inscription -----------------
@@ -659,6 +659,12 @@ function removeHardWord(word) {
 function saveVocabToStorage() { localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary)); }
 function saveHardToStorage() { localStorage.setItem(STORAGE_HARD, JSON.stringify(difficult)); }
 
+
+function saveAllChanges() {
+  saveHardToStorage();
+  saveVocabToStorage();
+  saveVocabToCloud().then(() => loadThemes());
+}
 // ----------------- Normalisation -----------------
 function normalizeString(s) {
   if (!s) return '';
