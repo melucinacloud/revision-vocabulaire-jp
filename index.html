@@ -437,7 +437,6 @@ function showCloudStatus(msg, success = true) {
 
 let saveTimeout;
 
-// Sauvegarde différée pour éviter les appels trop fréquents
 function saveAllChangesDebounced() {
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
@@ -475,36 +474,29 @@ function addHardWord(word) {
     difficult.push(word);
     vocabulary.hardWords = difficult.slice();
     updateHardWordsUI();
-    saveAllChanges(); // sauvegarde automatique
+    saveAllChangesDebounced(); // ✅ sauvegarde automatique différée
   } else {
     updateHardWordsUI();
   }
 }
 
-
-// Supprime un mot difficile et déclenche sauvegarde différée
 function removeHardWord(word) {
   const key = word.jp + '|' + word.fr;
 
-  // Supprimer le mot de toutes les catégories
   for (const cat in vocabulary) {
     if (Array.isArray(vocabulary[cat])) {
       vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
     }
   }
 
-  // Supprimer de la liste des mots difficiles
   difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
   vocabulary.hardWords = difficult.slice();
 
-  // Sauvegarder immédiatement
-  saveHardToStorage();
-  saveVocabToStorage();
-  saveVocabToCloud().then(() => {
-    updateHardWordsUI();
-    loadThemes();
-  });
+  updateHardWordsUI();
+  loadThemes();
+  saveAllChangesDebounced(); // ✅ sauvegarde automatique différée
 }
+
 
 
 // ----------------- Connexion / Inscription -----------------
