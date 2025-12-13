@@ -471,27 +471,30 @@ function addHardWord(word) {
 }
 
 function removeHardWord(word) {
-  const key = word.jp + '|' + word.fr;
+  const key = normalizeString(word.jp) + '|' + normalizeString(word.fr);
 
-  // Supprimer le mot de toutes les catégories (optionnel si tu veux juste supprimer de hardWords)
+  // Supprimer de toutes les catégories
   for (const cat in vocabulary) {
     if (Array.isArray(vocabulary[cat])) {
-      vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
+      vocabulary[cat] = vocabulary[cat].filter(w =>
+        normalizeString(w.jp) + '|' + normalizeString(w.fr) !== key
+      );
     }
   }
 
-  // Supprimer le mot de la liste des mots difficiles
-  difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
+  // Supprimer de la liste des mots difficiles
+  difficult = difficult.filter(w =>
+    normalizeString(w.jp) + '|' + normalizeString(w.fr) !== key
+  );
+
   vocabulary.hardWords = difficult.slice();
 
-  // Sauvegarder localement
   saveHardToStorage();
   saveVocabToStorage();
 
-  // Sauvegarder sur le cloud (avec liste hardWords correcte)
   saveVocabToCloud().then(() => {
-    updateHardWordsUI(); // met à jour l'UI
-    loadThemes();        // met à jour les catégories
+    updateHardWordsUI();
+    loadThemes();
   });
 }
 
