@@ -531,6 +531,7 @@ async function saveVocabToCloud() {
 }
 
 // ----------------- Chargement Cloud -----------------
+// ----------------- Chargement Cloud -----------------
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
   try {
@@ -538,7 +539,7 @@ async function loadVocabFromCloud(auto = true) {
     if (!res.ok) return;
     const cloudData = await res.json();
 
-    // ⚡ Mettre à jour les catégories locales
+    // Mettre à jour les catégories locales
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
@@ -546,12 +547,8 @@ async function loadVocabFromCloud(auto = true) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    // ⚡ Mots difficiles : remplacer complètement par ceux du cloud
-    // ⚡ Fusionner uniquement les mots locaux qui n'existent pas encore dans le cloud
-    const cloudHardKeys = new Set(cloudData.hardWords?.map(w => w.jp + '|' + w.fr) || []);
-    const localOnly = difficult.filter(w => !cloudHardKeys.has(w.jp + '|' + w.fr));
-
-    difficult = [...cloudData.hardWords || [], ...localOnly];
+    // ⚡ Remplacer complètement les mots difficiles par ceux du cloud
+    difficult = cloudData.hardWords ? cloudData.hardWords.slice() : [];
     vocabulary.hardWords = difficult.slice();
 
     updateHardWordsUI();
