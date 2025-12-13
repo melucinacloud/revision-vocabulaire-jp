@@ -473,25 +473,25 @@ function addHardWord(word) {
 function removeHardWord(word) {
   const key = word.jp + '|' + word.fr;
 
-  // 1️⃣ Supprimer le mot de toutes les catégories
+  // Supprimer le mot de toutes les catégories (optionnel si tu veux juste supprimer de hardWords)
   for (const cat in vocabulary) {
     if (Array.isArray(vocabulary[cat])) {
       vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
     }
   }
 
-  // 2️⃣ Supprimer le mot de la liste des mots difficiles
+  // Supprimer le mot de la liste des mots difficiles
   difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
   vocabulary.hardWords = difficult.slice();
 
-  // 3️⃣ Sauvegarder localement
+  // Sauvegarder localement
   saveHardToStorage();
   saveVocabToStorage();
 
-  // 4️⃣ Sauvegarder sur le cloud puis mettre à jour l'UI
+  // Sauvegarder sur le cloud (avec liste hardWords correcte)
   saveVocabToCloud().then(() => {
-    updateHardWordsUI(); // met à jour la liste "mots difficiles"
-    loadThemes();        // met à jour la gestion des catégories
+    updateHardWordsUI(); // met à jour l'UI
+    loadThemes();        // met à jour les catégories
   });
 }
 
@@ -565,47 +565,26 @@ function updateUIAfterLogin(email) {
 // ----------------- Sauvegarde / Chargement Cloud -----------------
 async function saveVocabToCloud() {
   if (!token) return showCloudStatus("Pas connecté", false);
-
   try {
-    // 1️⃣ Charger le cloud actuel pour fusion
-    const res = await fetch(`${WORKER_URL}/load?user=${token}`);
-    if (!res.ok) return showCloudStatus("Erreur récupération cloud", false);
-    const cloudData = await res.json();
-    const cloudHard = cloudData.hardWords || [];
+    // ⚡ Copier la liste locale de mots difficiles avant de sauvegarder
+    const toSave = {...vocabulary, hardWords: difficult.slice()};
 
-    // 2️⃣ Fusionner
-    const map = new Map();
-    [...cloudHard, ...difficult].forEach(w => {
-      const k = w.jp + '|' + w.fr;
-      if(!map.has(k)) map.set(k, w);
-    });
-    const mergedHard = Array.from(map.values());
-
-    // 3️⃣ Sauvegarder la fusion dans cloud
-    const mergedVocab = {...vocabulary, hardWords: mergedHard};
-    const saveRes = await fetch(`${WORKER_URL}/save?user=${token}`, {
+    const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mergedVocab)
+      body: JSON.stringify(toSave)
     });
 
-    if (!saveRes.ok) showCloudStatus("Erreur sauvegarde", false);
-    else {
-      showCloudStatus("Vocabulaire sauvegardé ✅");
-      // Mettre à jour local
-      difficult = mergedHard.slice();
-      vocabulary.hardWords = mergedHard.slice();
-      updateHardWordsUI();
-      loadThemes();
-    }
-
-  } catch (err) {
-    console.error(err);
+    if (!res.ok) showCloudStatus("Erreur sauvegarde", false);
+    else showCloudStatus("Vocabulaire sauvegardé ✅");
+  } catch {
     showCloudStatus("Erreur sauvegarde", false);
   }
 }
 
 
+
+// ----------------- Chargement Cloud -----------------
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
   try {
@@ -613,31 +592,57 @@ async function loadVocabFromCloud(auto = true) {
     if (!res.ok) return;
     const cloudData = await res.json();
 
+    // 1️⃣ Supprimer toutes les catégories sauf hardWords
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
+
+    // 2️⃣ Remplacer les catégories par celles du cloud (sauf hardWords)
     for (const key in cloudData) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    const allHard = [...(difficult || []), ...(cloudData.hardWords || [])];
-    const map = new Map();
-    allHard.forEach(w => {
-      const k = w.jp + '|' + w.fr;
-      if (!map.has(k)) map.set(k, w);
-    });
-    difficult = Array.from(map.values());
+    // 3️⃣ Ne pas fusionner les mots difficiles cloud + local
+    // on garde uniquement les mots difficiles locaux
     vocabulary.hardWords = difficult.slice();
 
+    // 4️⃣ Mettre à jour l’UI
     updateHardWordsUI();
     loadThemes();
+
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
+
   } catch (err) {
     console.error(err);
     if (!auto) alert("Impossible de contacter le serveur");
   }
 }
+
+// ----------------- Suppression mot difficile -----------------
+function removeHardWord(word) {
+  const key = word.jp + '|' + word.fr;
+
+  // Supprimer le mot de toutes les catégories
+  for (const cat in vocabulary) {
+    if (Array.isArray(vocabulary[cat])) {
+      vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
+    }
+  }
+
+  // Supprimer le mot de la liste des mots difficiles
+  difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
+  vocabulary.hardWords = difficult.slice();
+
+  // Sauvegarder localement et sur le cloud
+  saveHardToStorage();
+  saveVocabToStorage();
+  saveVocabToCloud().then(() => {
+    updateHardWordsUI();
+    loadThemes();
+  });
+}
+
 
 // ----------------- Sauvegarde locale -----------------
 function saveVocabToStorage() { localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary)); }
