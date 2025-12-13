@@ -565,18 +565,46 @@ function updateUIAfterLogin(email) {
 // ----------------- Sauvegarde / Chargement Cloud -----------------
 async function saveVocabToCloud() {
   if (!token) return showCloudStatus("Pas connecté", false);
+
   try {
-    const res = await fetch(`${WORKER_URL}/save?user=${token}`, {
+    // 1️⃣ Charger le cloud actuel pour fusion
+    const res = await fetch(`${WORKER_URL}/load?user=${token}`);
+    if (!res.ok) return showCloudStatus("Erreur récupération cloud", false);
+    const cloudData = await res.json();
+    const cloudHard = cloudData.hardWords || [];
+
+    // 2️⃣ Fusionner
+    const map = new Map();
+    [...cloudHard, ...difficult].forEach(w => {
+      const k = w.jp + '|' + w.fr;
+      if(!map.has(k)) map.set(k, w);
+    });
+    const mergedHard = Array.from(map.values());
+
+    // 3️⃣ Sauvegarder la fusion dans cloud
+    const mergedVocab = {...vocabulary, hardWords: mergedHard};
+    const saveRes = await fetch(`${WORKER_URL}/save?user=${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vocabulary)
+      body: JSON.stringify(mergedVocab)
     });
-    if (!res.ok) showCloudStatus("Erreur sauvegarde", false);
-    else showCloudStatus("Vocabulaire sauvegardé ✅");
-  } catch {
+
+    if (!saveRes.ok) showCloudStatus("Erreur sauvegarde", false);
+    else {
+      showCloudStatus("Vocabulaire sauvegardé ✅");
+      // Mettre à jour local
+      difficult = mergedHard.slice();
+      vocabulary.hardWords = mergedHard.slice();
+      updateHardWordsUI();
+      loadThemes();
+    }
+
+  } catch (err) {
+    console.error(err);
     showCloudStatus("Erreur sauvegarde", false);
   }
 }
+
 
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
