@@ -409,13 +409,33 @@ let currentQueue = [];
 let queueIndex = 0;
 let current = {};
 
-let vocabulary = JSON.parse(localStorage.getItem(STORAGE_VOC) || 'null');
-if (!vocabulary) {
+// ----------------- Chargement du vocabulaire -----------------
+let vocabulary = null;
+
+try {
+  vocabulary = JSON.parse(localStorage.getItem(STORAGE_VOC));
+} catch (e) {
+  vocabulary = null;
+}
+
+if (!vocabulary || typeof vocabulary !== "object") {
   vocabulary = {
-    animaux: [{ jp: 'うし', fr: 'vache', lvl: 1 }, { jp: 'いぬ', fr: 'chien', lvl: 1 }, { jp: 'ねこ', fr: 'chat', lvl: 1 }],
-    objets: [{ jp: 'かさ', fr: 'parapluie', lvl: 1 }, { jp: 'いす', fr: 'chaise', lvl: 1 }],
-    nourriture: [{ jp: 'すし', fr: 'sushi', lvl: 1 }, { jp: 'にく', fr: 'viande', lvl: 1 }]
+    animaux: [
+      { jp: "うし", fr: "vache" },
+      { jp: "いぬ", fr: "chien" },
+      { jp: "ねこ", fr: "chat" }
+    ],
+    objets: [
+      { jp: "かさ", fr: "parapluie" },
+      { jp: "いす", fr: "chaise" }
+    ],
+    nourriture: [
+      { jp: "すし", fr: "sushi" },
+      { jp: "にく", fr: "viande" }
+    ],
+    hardWords: []
   };
+
   localStorage.setItem(STORAGE_VOC, JSON.stringify(vocabulary));
 }
 
