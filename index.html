@@ -470,36 +470,38 @@ function updateHardWordsUI() {
 }
 
 // Ajoute un mot difficile et déclenche sauvegarde différée
+// ----------------- Ajout mot difficile -----------------
 function addHardWord(word) {
   const key = word.jp + '|' + word.fr;
   if (!difficult.some(w => w.jp + '|' + w.fr === key)) {
     difficult.push(word);
     vocabulary.hardWords = difficult.slice();
     updateHardWordsUI();
-    saveAllChangesDebounced();
+    saveAllChangesDebounced(); // ✅ sauvegarde automatique différée
   } else {
     updateHardWordsUI();
   }
 }
 
-// Supprime un mot difficile et déclenche sauvegarde différée
+// ----------------- Suppression mot difficile -----------------
 function removeHardWord(word) {
   const key = word.jp + '|' + word.fr;
 
-  // Supprimer de toutes les catégories
+  // Supprimer le mot de toutes les catégories
   for (const cat in vocabulary) {
     if (Array.isArray(vocabulary[cat])) {
       vocabulary[cat] = vocabulary[cat].filter(w => w.jp + '|' + w.fr !== key);
     }
   }
 
-  // Supprimer de la liste des mots difficiles
+  // Supprimer le mot de la liste des mots difficiles
   difficult = difficult.filter(w => w.jp + '|' + w.fr !== key);
   vocabulary.hardWords = difficult.slice();
 
+  // Mettre à jour l'affichage et sauvegarder automatiquement
   updateHardWordsUI();
   loadThemes();
-  saveAllChangesDebounced();
+  saveAllChangesDebounced(); // ✅ sauvegarde automatique différée
 }
 
 // ======================= SAUVEGARDE LOCALE =======================
@@ -530,7 +532,7 @@ async function saveVocabToCloud() {
   }
 }
 
-// ----------------- Chargement Cloud -----------------
+
 // ----------------- Chargement Cloud -----------------
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
