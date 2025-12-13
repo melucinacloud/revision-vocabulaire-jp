@@ -602,6 +602,7 @@ async function loadVocabFromCloud(auto = true) {
     vocabulary.hardWords = difficult.slice();
 
     updateHardWordsUI();
+    loadThemes();
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
   } catch (err) {
@@ -1330,6 +1331,7 @@ function renameCategoryPrompt(oldCat){
     vocabulary[newCat]=vocabulary[oldCat];
     delete vocabulary[oldCat];
     saveVocabToStorage();
+    loadThemes();  
     openCategoryManager();
   }
 }
@@ -1350,6 +1352,7 @@ function removeSelectedCats(){
     delete vocabulary[cat];
   });
   saveVocabToStorage();
+  loadThemes();  
   openCategoryManager();
 }
 
