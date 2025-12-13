@@ -457,17 +457,14 @@ function updateHardWordsUI() {
 }
 
 // ----------------- Ajout / Suppression mots difficiles -----------------
+
 function addHardWord(word) {
   const key = word.jp + '|' + word.fr;
   if (!difficult.some(w => w.jp + '|' + w.fr === key)) {
     difficult.push(word);
     vocabulary.hardWords = difficult.slice();
-    updateHardWordsUI();
-    saveHardToStorage();
-    saveVocabToCloud();
-  } else {
-    updateHardWordsUI();
   }
+  saveAllChanges(); // sauvegarde automatique et UI mise à jour
 }
 
 function removeHardWord(word) {
@@ -489,15 +486,22 @@ function removeHardWord(word) {
 
   vocabulary.hardWords = difficult.slice();
 
+  saveAllChanges(); // sauvegarde automatique et UI mise à jour
+}
+
+// Fonction qui sauvegarde tout et met à jour l'UI
+function saveAllChanges() {
+  // Sauvegarde locale
   saveHardToStorage();
   saveVocabToStorage();
 
+  // Sauvegarde cloud
   saveVocabToCloud().then(() => {
+    // Mise à jour de l'affichage
     updateHardWordsUI();
-    loadThemes();
+    loadThemes(); // met à jour le menu déroulant des catégories
   });
 }
-
 
 
 // ----------------- Connexion / Inscription -----------------
