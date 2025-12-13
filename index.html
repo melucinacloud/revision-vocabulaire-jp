@@ -433,44 +433,58 @@ function showCloudStatus(msg, success = true) {
 }
 
 // ----------------- Mots difficiles -----------------
+/* ---------- Mots difficiles avec sauvegarde automatique ---------- */
+let saveTimeout;
+
+// Sauvegarde différée pour éviter les appels trop fréquents
+function saveAllChangesDebounced() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveHardToStorage();
+    saveVocabToStorage();
+    saveVocabToCloud().then(() => loadThemes());
+  }, 1500); // 1,5s après la dernière action
+}
+
+// Met à jour l'affichage de la liste des mots difficiles
 function updateHardWordsUI() {
   const container = document.getElementById("hard-words-list");
   if (!container) return;
 
   container.innerHTML = "";
-
   const map = new Map();
   difficult.forEach(word => {
     const key = word.jp + '|' + word.fr;
     if (!map.has(key)) map.set(key, word);
   });
   difficult = Array.from(map.values());
+  vocabulary.hardWords = difficult.slice();
 
   difficult.forEach(word => {
     const p = document.createElement("p");
     p.textContent = `${word.jp} → ${word.fr} (${word.cat || '?'})`;
     container.appendChild(p);
   });
-
-  saveHardToStorage();
-  saveVocabToCloud();
 }
 
-// ----------------- Ajout / Suppression mots difficiles -----------------
-
+// Ajoute un mot difficile et déclenche sauvegarde différée
 function addHardWord(word) {
   const key = word.jp + '|' + word.fr;
   if (!difficult.some(w => w.jp + '|' + w.fr === key)) {
     difficult.push(word);
     vocabulary.hardWords = difficult.slice();
+    updateHardWordsUI();
+    saveAllChangesDebounced();
+  } else {
+    updateHardWordsUI();
   }
-  saveAllChanges(); // sauvegarde automatique et UI mise à jour
 }
 
+// Supprime un mot difficile et déclenche sauvegarde différée
 function removeHardWord(word) {
   const key = normalizeString(word.jp) + '|' + normalizeString(word.fr);
 
-  // Supprimer de toutes les catégories
+  // Supprimer le mot de toutes les catégories
   for (const cat in vocabulary) {
     if (Array.isArray(vocabulary[cat])) {
       vocabulary[cat] = vocabulary[cat].filter(w =>
@@ -486,23 +500,10 @@ function removeHardWord(word) {
 
   vocabulary.hardWords = difficult.slice();
 
-  saveAllChanges(); // sauvegarde automatique et UI mise à jour
+  updateHardWordsUI();
+  loadThemes();
+  saveAllChangesDebounced();
 }
-
-// Fonction qui sauvegarde tout et met à jour l'UI
-function saveAllChanges() {
-  // Sauvegarde locale
-  saveHardToStorage();
-  saveVocabToStorage();
-
-  // Sauvegarde cloud
-  saveVocabToCloud().then(() => {
-    // Mise à jour de l'affichage
-    updateHardWordsUI();
-    loadThemes(); // met à jour le menu déroulant des catégories
-  });
-}
-
 
 // ----------------- Connexion / Inscription -----------------
 async function handleRegister() {
