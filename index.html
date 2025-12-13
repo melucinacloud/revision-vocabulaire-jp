@@ -592,32 +592,35 @@ async function loadVocabFromCloud(auto = true) {
     if (!res.ok) return;
     const cloudData = await res.json();
 
-    // 1️⃣ Supprimer toutes les catégories sauf hardWords
+    // On met à jour les catégories locales sauf hardWords
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
-
-    // 2️⃣ Remplacer les catégories par celles du cloud (sauf hardWords)
     for (const key in cloudData) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    // 3️⃣ Ne pas fusionner les mots difficiles cloud + local
-    // on garde uniquement les mots difficiles locaux
+    // ⚡ Fusion des mots difficiles : on garde ce qui n'a pas été supprimé localement
+    const cloudHard = cloudData.hardWords || [];
+    const localKeys = new Set(difficult.map(w => w.jp + '|' + w.fr));
+    const merged = [
+      ...difficult, // mots locaux actuels
+      ...cloudHard.filter(w => !localKeys.has(w.jp + '|' + w.fr)) // ajouter les nouveaux du cloud
+    ];
+    difficult = merged;
     vocabulary.hardWords = difficult.slice();
 
-    // 4️⃣ Mettre à jour l’UI
     updateHardWordsUI();
-    loadThemes();
+    loadThemes(); // mise à jour menu catégories
 
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
-
   } catch (err) {
     console.error(err);
     if (!auto) alert("Impossible de contacter le serveur");
   }
 }
+
 
 // ----------------- Suppression mot difficile -----------------
 function removeHardWord(word) {
