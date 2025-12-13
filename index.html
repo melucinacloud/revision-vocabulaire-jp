@@ -530,6 +530,7 @@ async function saveVocabToCloud() {
   }
 }
 
+// ----------------- Chargement Cloud -----------------
 async function loadVocabFromCloud(auto = true) {
   if (!token) return;
   try {
@@ -537,7 +538,7 @@ async function loadVocabFromCloud(auto = true) {
     if (!res.ok) return;
     const cloudData = await res.json();
 
-    // Met à jour les catégories locales sauf hardWords
+    // ⚡ Mettre à jour les catégories locales
     for (const key in vocabulary) {
       if (key !== "hardWords") delete vocabulary[key];
     }
@@ -545,16 +546,16 @@ async function loadVocabFromCloud(auto = true) {
       if (key !== "hardWords") vocabulary[key] = cloudData[key];
     }
 
-    // ⚡ Synchronisation complète des mots difficiles
-    const cloudHard = cloudData.hardWords || [];
-    // On prend uniquement les mots présents dans le cloud, plus ceux ajoutés localement qui n'existent pas encore dans le cloud
-    const cloudKeys = new Set(cloudHard.map(w => w.jp + '|' + w.fr));
-    const localOnly = difficult.filter(w => !cloudKeys.has(w.jp + '|' + w.fr));
-    difficult = [...cloudHard, ...localOnly];
+    // ⚡ Mots difficiles : remplacer complètement par ceux du cloud
+    // ⚡ Fusionner uniquement les mots locaux qui n'existent pas encore dans le cloud
+    const cloudHardKeys = new Set(cloudData.hardWords?.map(w => w.jp + '|' + w.fr) || []);
+    const localOnly = difficult.filter(w => !cloudHardKeys.has(w.jp + '|' + w.fr));
+
+    difficult = [...cloudData.hardWords || [], ...localOnly];
     vocabulary.hardWords = difficult.slice();
 
     updateHardWordsUI();
-    loadThemes();
+    loadThemes(); // mise à jour menu catégories
 
     if (!auto) alert("Vocabulaire chargé !");
     if (auto) console.log("Synchronisation cloud effectuée ✅");
@@ -564,13 +565,17 @@ async function loadVocabFromCloud(auto = true) {
   }
 }
 
-// ======================= SYNCHRONISATION AUTOMATIQUE =======================
+// ----------------- Synchronisation automatique toutes les 10s -----------------
 function startAutoCloudSync() {
   setInterval(async () => {
     if (!token) return;
+
+    // ⚡ Charger d'abord le cloud et appliquer suppressions/ajouts
     await loadVocabFromCloud(true);
-    saveAllChanges();
-  }, 10000);
+
+    // ⚡ Puis envoyer immédiatement les changements locaux restants
+    saveAllChangesDebounced();
+  }, 10000); // toutes les 10 secondes
 }
 
 // ======================= NORMALISATION =======================
