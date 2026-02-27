@@ -358,9 +358,11 @@ footer {
 
 <div class="section">
   <div class="mlabel">Catégories</div>
-  <div style="display:block; font-size:0.85em; color:var(--text); margin-bottom:4px;">
+  
+  <label for="theme" style="display:block; font-size:0.85em; color:var(--text); margin-bottom:4px;">
     Maintenez Ctrl (Windows) ou Cmd (Mac) pour sélectionner plusieurs thèmes.
-  </div>
+  </label>
+  
   <select id="theme" multiple size="5" onchange="onThemeChange()">
     <option value="all">Tous</option>
   </select>
