@@ -782,6 +782,13 @@ function normalizeWordAndCategory(jp, fr, cat){
   return {jp, fr, cat: catNorm};
 }
 
+function getSelectedThemes() {
+  const sel = document.getElementById('theme');
+  const selected = Array.from(sel.selectedOptions).map(opt => opt.value);
+  if(selected.includes('all') || selected.length === 0) return Object.keys(vocabulary).filter(k => k !== 'hardWords');
+  return selected;
+}
+
 function loadThemes(){
   const sel = document.getElementById('theme');
   const prev = sel.value || 'all';
@@ -806,22 +813,13 @@ document.querySelectorAll('input[name="mode"]').forEach(radio => {
 
 function shuffle(array){ for(let i = array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[array[i],array[j]]=[array[j],array[i]];} return array; }
 
-function buildActiveListExcludeDifficult() {
-  const select = document.getElementById('theme');
-  const selected = Array.from(select.selectedOptions).map(opt => opt.value);
-  const hardKeys = new Set(difficult.map(w => w.jp + '|' + w.fr));
-
-  let list = [];
-  if (selected.includes('all')) {
-    list = Object.values(vocabulary).flat();
-  } else {
-    selected.forEach(cat => {
-      if (vocabulary[cat]) list = list.concat(vocabulary[cat]);
-    });
-  }
-
+function buildActiveListExcludeDifficult(){
+  const selectedThemes = getSelectedThemes();
+  const hardKeys = new Set(difficult.map(w=>w.jp + '|' + w.fr));
+  let list = selectedThemes.flatMap(cat => vocabulary[cat] || []);
   return list.filter(w => !hardKeys.has(w.jp + '|' + w.fr));
 }
+
 function startNewRandomList(){
   const list = buildActiveListExcludeDifficult();
   currentQueue = shuffle(list.slice());
